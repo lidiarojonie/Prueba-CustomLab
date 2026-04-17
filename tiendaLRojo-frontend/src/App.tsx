@@ -134,11 +134,11 @@ function App() {
             <div className="product-card actions">
               <button title="Editar stock"
                 onClick={() => handleUpdateStock(product.id, product.stock)}>
-                Editar
+                ✏️
               </button>
               <button title="Borrar" className="btn-danger"
                 onClick={() => handleDelete(product.id)}>
-                Borrar
+                🗑️
               </button>
             </div>
           </div>
