@@ -5,5 +5,5 @@ export interface Product {
     price: number;      // Precio en euros, ej: 19.99
     category: string;
     stock: number;      // Unidades disponibles
-    imageUrl: string;
+    image_url: string;
 }

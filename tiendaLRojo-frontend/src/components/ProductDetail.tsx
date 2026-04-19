@@ -38,10 +38,10 @@ export function ProductDetail() {
         <div className="product-detail">
             <button className="back-button" onClick={() => navigate("/")}>← Volver</button>
             <br />
-            <img src={product.imageUrl} alt={product.name} />
+            <img src={product.image_url} alt={product.name} />
             <h3>{product.name}</h3>
             {product.description && <p className="description">{product.description}</p>}
-            <p className="price">{product.price.toFixed(2)} €</p>
+            <p className="price">{Number(product.price).toFixed(2)} €</p>
             <p className={`stock ${product.stock > 0 ? "in-stock" : "out-of-stock"}`}>
                 {product.stock > 0 ? `En Stock - ${product.stock} unidades` : "Sin Stock - 0 unidades"}
             </p>

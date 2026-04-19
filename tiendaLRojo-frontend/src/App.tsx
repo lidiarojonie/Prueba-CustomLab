@@ -22,8 +22,8 @@ function App() {
       .catch((error) => console.error("Error ", error));
   };
 
-  const handleUpdateStock = (id: number, currentStock: number): void => {
-    const input = window.prompt(`Stock actual: ${currentStock}. Nuevo stock: `);
+  const handleUpdateStock = (product: Product): void => {
+    const input = window.prompt(`Stock actual: ${product.stock}. Nuevo stock: `);
     if (input === null) return;
 
     const newStock = parseInt(input);
@@ -33,10 +33,12 @@ function App() {
       return;
     }
 
-    fetch(`http://localhost:3000/api/products/${id}`, {
+    const updatedProduct = { ...product, stock: newStock };
+
+    fetch(`http://localhost:3000/api/products/${product.id}`, {
       method: "PUT",
       headers: { "Content-type": "application/json" },
-      body: JSON.stringify({ stock: newStock })
+      body: JSON.stringify(updatedProduct)
     })
       .then((res) => {
         if (!res.ok) throw new Error("Error del servidor: " + res.status);
@@ -57,7 +59,7 @@ function App() {
       price: Number(formData.get('price')),
       category: formData.get('category'),
       stock: Number(formData.get('stock')),
-      imageUrl: formData.get('imageUrl')
+      image_url: formData.get('imageUrl')
     };
 
     fetch('http://localhost:3000/api/products', {
@@ -133,7 +135,7 @@ function App() {
             <ProductCard product={product} onSelect={(id) => navigate(`product/${id}`)} />
             <div className="product-card actions">
               <button title="Editar stock"
-                onClick={() => handleUpdateStock(product.id, product.stock)}>
+                onClick={() => handleUpdateStock(product)}>
                 ✏️
               </button>
               <button title="Borrar" className="btn-danger"
