@@ -31,7 +31,8 @@ app.get("/api/hello", (req: Request, res: Response) => {
 });
 
 app.get("/api/products", async (req: Request, res: Response) => {
-    const result = await pool.query("SELECT * FROM products");
+    const result = await pool.query(
+        "SELECT * FROM products WHERE deleted_at IS NULL ORDER BY id ASC");
     res.json(result.rows);
 });
 
@@ -110,7 +111,10 @@ app.put("/api/products/:id", async (req: Request<{ id: string }, {}, {
     res.json({ message: "Producto actualizado correctamente", product: result.rows[0] });
 });
 
+// Hard delete, elimina completamente el producto de la base de datos. 
+// No se recomienda en producción, pero es útil para pruebas y desarrollo.
 // Elimina un producto mediante la id en la url
+/*
 app.delete("/api/products/:id", async (req: Request<{ id: string }>, res: Response) => {
     const id = Number(req.params.id);
 
@@ -121,4 +125,56 @@ app.delete("/api/products/:id", async (req: Request<{ id: string }>, res: Respon
     }
 
     res.json({ message: "Producto eliminado", product: result.rows[0] });
+});
+*/
+
+// Soft delete, marca el producto como eliminado sin eliminarlo físicamente de la base de datos. 
+// Esto permite mantener un historial y evitar problemas de integridad referencial.
+app.delete("/api/products/:id", async (req, res) => {
+    const inOrders = await pool.query(
+        "SELECT 1 FROM order_items WHERE product_id = $1 LIMIT 1", 
+        [Number(req.params.id)]
+    );
+
+    if (inOrders.rows.length > 0) {
+        const result = await pool.query(
+            "UPDATE products SET deleted_at = NOW() WHERE id = $1 AND deleted_at IS NULL RETURNING *", 
+            [Number(req.params.id)]
+        );
+        if (result.rows.length === 0) {
+            return res.status(404).json({ error: "Producto no encontrado o ya eliminado" });
+        }
+        return res.json({ message: "Producto marcado como eliminado", 
+            product: result.rows[0] });
+    }
+    
+    // Si no está en ningún pedido, se puede eliminar físicamente
+    // Añadir el Hard delete como opción para productos que no estén en pedidos
+    const id = Number(req.params.id);
+
+    const result = await pool.query("DELETE FROM products WHERE id = $1 RETURNING *", [id]);
+
+    if (result.rows.length === 0) {
+        return res.status(404).json({ error: "Producto no encontrado" });
+    }
+
+    res.json({ message: "Producto eliminado", product: result.rows[0] });
+});
+
+app.patch("/api/products/:id/toggle", async (req, res) => {
+    const result = await pool.query(
+        "UPDATE products SET active = NOT active WHERE id = $1 AND deleted_at IS NULL RETURNING *",
+        [Number(req.params.id)]
+    );
+
+    if (result.rows.length === 0) {
+        return res.status(404).json({ error: "Producto no encontrado o eliminado" });
+    }
+
+    const p = result.rows[0];
+
+    res.json({ 
+        message: p.active ? "Producto activado" : "Producto desactivado", 
+        product: p 
+    });
 });
