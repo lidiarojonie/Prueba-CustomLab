@@ -95,6 +95,25 @@ function App() {
       .catch((error) => console.error("Error: ", error));
   };
 
+  const addToCart = (product: Product): void => {
+    setCart(prev => {
+      const existing = prev.find(
+        i => i.product.id === product.id
+      );
+      if (existing) {
+        if (existing.quantity >= product.stock)
+          return prev;
+        return prev.map(i => 
+          i.product.id === product.id
+          ? { ...i, quantity: i.quantity + 1}
+          :i
+        );
+      }
+
+      return [...prev, {product, quantity: 1}]
+    });
+  };
+
   return (
     <>
       <div className='formulario-producto'>
@@ -139,6 +158,7 @@ function App() {
             onSelect={(id) => navigate(`product/${id}`)}
             onEdit={handleUpdateStock}
             onDelete={handleDelete}
+            onAddToCart={addToCart}
           />
         ))}
       </div>
