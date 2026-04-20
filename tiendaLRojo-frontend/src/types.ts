@@ -7,3 +7,8 @@ export interface Product {
     stock: number;      // Unidades disponibles
     image_url: string;
 }
+
+export interface CartItem {
+    product: Product;
+    quantity: number;
+}

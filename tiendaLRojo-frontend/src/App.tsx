@@ -1,10 +1,12 @@
 import { useEffect, useState } from 'react';
 import type { Product } from './types.ts';
+import type { CartItem } from './types.ts';
 import ProductCard from './components/ProductCard';
 import { useNavigate } from 'react-router-dom';
 
 function App() {
   const [products, setProducts] = useState<Product[]>([]);
+  const [cart, setCart] = useState<CartItem[]>([]);
   const navigate = useNavigate();
 
   useEffect(() => {

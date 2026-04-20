@@ -36,6 +36,12 @@ app.get("/api/products", async (req: Request, res: Response) => {
     res.json(result.rows);
 });
 
+app.get("/api/products/inactive", async (req: Request, res: Response) => {
+    const result = await pool.query(
+        "SELECT * FROM products WHERE active = false AND deleted_at IS NULL ORDER BY id ASC");
+    res.json(result.rows);
+});
+
 app.get("/api/products/:id", async (req: Request, res: Response) => {
     const id = Number(req.params.id);
     const result = await pool.query("SELECT * FROM products WHERE id = $1", [id]);
