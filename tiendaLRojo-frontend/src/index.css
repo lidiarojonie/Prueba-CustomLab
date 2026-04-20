@@ -38,16 +38,26 @@ body {
   height: 100%;
 }
 
-.product-card {
+.product-card-wrapper {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
   background-color: white;
   border: 1px solid #ddd;
   border-radius: 8px;
+  overflow: hidden;
+}
+
+.product-card {
+  background-color: white;
   padding: 1rem;
   text-align: center;
   cursor: pointer;
   display: flex;
   flex-direction: column;
   flex-grow: 1;
+  border: none;
+  border-radius: 0;
 }
 
 .product-card img {
@@ -68,35 +78,36 @@ body {
 .product-actions {
   display: flex;
   gap: 0.5rem;
-  margin-top: 0.5rem;
+  padding: 0.5rem 1rem 1rem 1rem;
+  background-color: #f9f9f9;
 }
 
 .product-actions button {
   flex: 1;
-  padding: 0.5rem;
+  padding: 0.6rem;
   color: white;
   border: none;
   border-radius: 4px;
-  font-size: 0.9rem;
+  font-size: 1rem;
   font-weight: bold;
   cursor: pointer;
   transition: background-color 0.2s;
 }
 
 .btn-edit {
-  background-color: #3b82f6;
+  background-color: #9ca3af;
 }
 
 .btn-edit:hover {
-  background-color: #2563eb;
+  background-color: #6b7280;
 }
 
 .btn-delete {
-  background-color: #ef4444;
+  background-color: #a37878;
 }
 
 .btn-delete:hover {
-  background-color: #dc2626;
+  background-color: #8a5f5f;
 }
 
 .price {

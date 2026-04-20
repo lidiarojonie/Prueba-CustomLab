@@ -131,19 +131,13 @@ function App() {
       {/* Actualizar a partir de aqui */}
       <div className='products-grid'>
         {products.map((product) => (
-          <div key={product.id} className="product-item-wrapper">
-            <ProductCard product={product} onSelect={(id) => navigate(`product/${id}`)} />
-            <div className="product-actions">
-              <button title="Editar stock" className="btn-edit"
-                onClick={() => handleUpdateStock(product)}>
-                ✏️
-              </button>
-              <button title="Borrar" className="btn-delete"
-                onClick={() => handleDelete(product.id)}>
-                🗑️
-              </button>
-            </div>
-          </div>
+          <ProductCard 
+            key={product.id}
+            product={product} 
+            onSelect={(id) => navigate(`product/${id}`)}
+            onEdit={handleUpdateStock}
+            onDelete={handleDelete}
+          />
         ))}
       </div>
     </>
