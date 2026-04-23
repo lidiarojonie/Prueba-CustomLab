@@ -20,6 +20,10 @@ function App() {
       .catch((error) => console.error("Error:", error));
   }, []);
 
+  useEffect(() => {
+    sessionStorage.setItem("cart", JSON.stringify(cart));
+  }, [cart]);
+
   // Actualizar desde aqui
   const loadProducts = () => {
     fetch('http://localhost:3000/api/products')
