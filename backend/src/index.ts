@@ -105,7 +105,7 @@ app.post("/api/products", async (req: Request<{}, {}, {
 });
 
 app.post("/api/pedidos", async (req: Request<{}, {}, {
-    items: { product_id: number; quantity: number; unit_price: number }[];
+    items: { product_id: number; quantity: number; price: number }[];
     address: string;
 }>, res: Response) => {
     const { items, address } = req.body;
@@ -117,12 +117,12 @@ app.post("/api/pedidos", async (req: Request<{}, {}, {
     }
 
     for (const item of items) {
-        if (!item.product_id || item.quantity <= 0 || item.unit_price <= 0) {
-            return res.status(400).json({ error: "Cada item debe tener un product_id numérico, una quantity mayor que 0 y un unit_price mayor que 0" });
+        if (!item.product_id || item.quantity <= 0 || item.price <= 0) {
+            return res.status(400).json({ error: "Cada item debe tener un product_id numérico, una quantity mayor que 0 y un price mayor que 0" });
         }
 
         const productResult = await pool.query(
-            "SELECT stock, unit_price FROM products WHERE id = $1 AND deleted_at IS NULL",
+            "SELECT stock, price FROM products WHERE id = $1 AND deleted_at IS NULL",
             [item.product_id]
         );
         if (productResult.rows.length === 0) {
@@ -131,13 +131,13 @@ app.post("/api/pedidos", async (req: Request<{}, {}, {
         if (productResult.rows[0].stock < item.quantity) {
             return res.status(400).json({ error: `Stock insuficiente para producto id ${item.product_id}` });
         }
-        if (productResult.rows[0].unit_price !== item.unit_price) {
+        if (productResult.rows[0].price !== item.price) {
             return res.status(400).json({ error: `El precio del producto con id ${item.product_id} ha cambiado` });
         }
         
     }
 
-    const total = items.reduce((sum, item) => sum + item.quantity * item.unit_price, 0);
+    const total = items.reduce((sum, item) => sum + item.quantity * item.price, 0);
 
     const client = await pool.connect();
 
@@ -153,7 +153,7 @@ app.post("/api/pedidos", async (req: Request<{}, {}, {
         for (const item of items) {
             await client.query(
                 "INSERT INTO order_items (order_id, product_id, quantity, unit_price) VALUES ($1, $2, $3, $4)",
-                [orderId, item.product_id, item.quantity, item.unit_price]
+                [orderId, item.product_id, item.quantity, item.price]
             );
             await client.query(
                 "UPDATE products SET stock = stock - $1 WHERE id = $2",
