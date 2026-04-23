@@ -2,13 +2,17 @@ import { useEffect, useState } from 'react';
 import type { Product } from './types.ts';
 import type { CartItem } from './types.ts';
 import ProductCard from './components/ProductCard';
+import Cart from './components/cart';
 import { useNavigate } from 'react-router-dom';
 
 function App() {
-  const [products, setProducts] = useState<Product[]>([]);
-  const [cart, setCart] = useState<CartItem[]>([]);
   const navigate = useNavigate();
-
+  const [products, setProducts] = useState<Product[]>([]);
+  const [cart, setCart] = useState<CartItem[]>(() => {
+    const saved = sessionStorage.getItem("cart");
+    return saved ? JSON.parse(saved) : [];
+  });
+  
   useEffect(() => {
     fetch('http://localhost:3000/api/products')
       .then((res) => res.json())
@@ -97,16 +101,16 @@ function App() {
 
   const addToCart = (product: Product): void => {
     setCart(prev => {
-      const existing = prev.find(
-        i => i.product.id === product.id
-      );
+      const existing = prev.find(cartItemtemporal => cartItemtemporal.product.id === product.id);
+
       if (existing) {
         if (existing.quantity >= product.stock)
           return prev;
-        return prev.map(i => 
-          i.product.id === product.id
-          ? { ...i, quantity: i.quantity + 1}
-          :i
+        
+        return prev.map(cartItemtemporal => 
+          cartItemtemporal.product.id === product.id
+          ? { ...cartItemtemporal, quantity: cartItemtemporal.quantity + 1}
+          :cartItemtemporal
         );
       }
 
@@ -114,8 +118,18 @@ function App() {
     });
   };
 
+  const removeFromCart = (productId: number): void => {
+    setCart(prev => prev.filter(item => item.product.id !== productId));
+  };
+
+  const clearCart = (): void => {
+    setCart([]);
+  };
+
   return (
     <>
+      <Cart cart={cart} onRemoveFromCart={removeFromCart} onClearCart={clearCart} />
+
       <div className='formulario-producto'>
         <h3>Añadir producto</h3>
         <form onSubmit={handleSubmit} className="form-horizontal">
@@ -165,6 +179,5 @@ function App() {
     </>
   )
 }
-
 
 export default App;

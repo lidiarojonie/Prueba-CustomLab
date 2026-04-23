@@ -56,6 +56,27 @@ app.get("/api/test", async (req: Request, res: Response) => {
     res.json({ connected: true, time: result.rows[0].now });
 });
 
+app.get("/api/pedidos", async (req: Request, res: Response) => {
+    const result = await pool.query(
+        "SELECT * FROM orders WHERE created_at IS NOT NULL ORDER BY id ASC");
+    res.json(result.rows);
+});
+
+app.get("/api/pedidos/:id", async (req: Request, res: Response) => {
+    const orderId = Number(req.params.id);
+    const orderResult = await pool.query("SELECT * FROM orders WHERE id = $1", [orderId]);
+    if (orderResult.rows.length === 0) {
+        return res.status(404).json({ message: "Pedido no encontrado" });
+    }
+    const items = await pool.query(
+        `SELECT p.id, p.name, p.price FROM order_items oi
+        JOIN products p ON oi.product_id = p.id
+        WHERE oi.order_id = $1`, 
+        [orderId]
+    );
+    res.json({... orderResult.rows[0], items: items.rows });
+});
+
 // Añadir producto a la web
 app.post("/api/products", async (req: Request<{}, {}, {
     name: string; description?: string; price: number;
