@@ -104,6 +104,76 @@ app.post("/api/products", async (req: Request<{}, {}, {
     res.status(201).json({ message: "producto añadido correctamente", product: result.rows[0] });
 });
 
+app.post("/api/pedidos", async (req: Request<{}, {}, {
+    items: { product_id: number; quantity: number; unit_price: number }[];
+    address: string;
+}>, res: Response) => {
+    const { items, address } = req.body;
+    if (!items || !Array.isArray(items) || items.length === 0) {
+        return res.status(400).json({ error: "Se requiere un array de items con product_id y quantity" });
+    }
+    if (!address) {
+        return res.status(400).json({ error: "La dirección de envío es requerida" });
+    }
+
+    for (const item of items) {
+        if (!item.product_id || item.quantity <= 0 || item.unit_price <= 0) {
+            return res.status(400).json({ error: "Cada item debe tener un product_id numérico, una quantity mayor que 0 y un unit_price mayor que 0" });
+        }
+
+        const productResult = await pool.query(
+            "SELECT stock, unit_price FROM products WHERE id = $1 AND deleted_at IS NULL",
+            [item.product_id]
+        );
+        if (productResult.rows.length === 0) {
+            return res.status(400).json({ error: `Producto con id ${item.product_id} no encontrado` });
+        }
+        if (productResult.rows[0].stock < item.quantity) {
+            return res.status(400).json({ error: `Stock insuficiente para producto id ${item.product_id}` });
+        }
+        if (productResult.rows[0].unit_price !== item.unit_price) {
+            return res.status(400).json({ error: `El precio del producto con id ${item.product_id} ha cambiado` });
+        }
+        
+    }
+
+    const total = items.reduce((sum, item) => sum + item.quantity * item.unit_price, 0);
+
+    const client = await pool.connect();
+
+    try {
+        await pool.query("BEGIN");
+
+        const orderResult = await pool.query(
+            "INSERT INTO orders (status, total, address) VALUES ('pending', $1, $2) RETURNING *",
+            [total, address]
+        );
+        const orderId = orderResult.rows[0].id;
+
+        for (const item of items) {
+            await client.query(
+                "INSERT INTO order_items (order_id, product_id, quantity, unit_price) VALUES ($1, $2, $3, $4)",
+                [orderId, item.product_id, item.quantity, item.unit_price]
+            );
+            await client.query(
+                "UPDATE products SET stock = stock - $1 WHERE id = $2",
+                [item.quantity, item.product_id]
+            );
+        }
+
+        await client.query("COMMIT");
+        res.status(201).json({ message: "Pedido creado correctamente", orderId });
+    } catch (error) {
+        await client.query("ROLLBACK");
+        console.error("Error al crear pedido:", error);
+        res.status(500).json({ error: "Error al crear el pedido" });
+    } finally {
+        client.release();
+    }
+});
+
+
+
 // AÑADIR AL DISCO DE CASA A PARTIR DE AQUI
 // Modifica, en este caso, todo el producto seleccionado
 app.put("/api/products/:id", async (req: Request<{ id: string }, {}, {
@@ -157,6 +227,7 @@ app.delete("/api/products/:id", async (req: Request<{ id: string }>, res: Respon
 
 // Soft delete, marca el producto como eliminado sin eliminarlo físicamente de la base de datos. 
 // Esto permite mantener un historial y evitar problemas de integridad referencial.
+
 app.delete("/api/products/:id", async (req, res) => {
     const inOrders = await pool.query(
         "SELECT 1 FROM order_items WHERE product_id = $1 LIMIT 1", 
