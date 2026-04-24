@@ -8,6 +8,14 @@ interface ProductCardProps {
     onAddToCart?: (product: Product) => void;
 }
 
+function rating(average_rating : number | null | undefined) : string {
+    if (average_rating === null || average_rating === undefined) {
+        return "Sin valoraciones";
+    }
+    const filledStars = Math.round(average_rating);
+    return "★".repeat(filledStars) + "☆".repeat(5 - filledStars);
+}
+
 function ProductCard({ product, onSelect, onEdit, onDelete, onAddToCart }: ProductCardProps) {
 
     return (
@@ -29,6 +37,7 @@ function ProductCard({ product, onSelect, onEdit, onDelete, onAddToCart }: Produ
                 </div>
                 <h3>{product.name}</h3>
                 <p className="price">{Number(product.price).toFixed(2)} €</p>
+                <p className="rating">{rating(product.average_rating)}</p>
                 <p className={`stock ${product.stock > 0 ? " in-stock" : "out-of-stock"}`}>
                     {product.stock > 0 ? `En Stock - ${product.stock} unidades` : "Sin Stock - 0 unidades"}
                 </p>

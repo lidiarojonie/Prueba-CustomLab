@@ -18,9 +18,9 @@ export function ProductDetail() {
         const existingItem = cart.find(item => item.product.id === product.id);
         if (existingItem) {
             if (existingItem.quantity >= product.stock) return;
-            sessionStorage.setItem("cart", JSON.stringify(cart.map(item => {
+            sessionStorage.setItem("cart", JSON.stringify(cart.map(item =>
                 item.product.id === product.id ? { ...item, quantity: item.quantity + 1 } : item
-            })));
+            )));
         } else {
             sessionStorage.setItem("cart", JSON.stringify([...cart, { product, quantity: 1 }]));
         }

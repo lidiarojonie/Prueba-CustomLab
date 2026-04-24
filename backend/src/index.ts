@@ -30,9 +30,16 @@ app.get("/api/hello", (req: Request, res: Response) => {
     res.json({ message: "Hola desde el backend" })
 });
 
+// Además, modifica el endpoint existente GET /api/products para que devuelva también el rating medio de cada producto
+//(puede ser null si no tiene reseñas).
 app.get("/api/products", async (req: Request, res: Response) => {
     const result = await pool.query(
-        "SELECT * FROM products WHERE deleted_at IS NULL ORDER BY id ASC");
+        `SELECT p.*, AVG(r.rating) as average_rating
+        FROM products p
+        LEFT JOIN reviews r ON p.id = r.product_id
+        WHERE p.deleted_at IS NULL
+        GROUP BY p.id
+        ORDER BY p.id ASC`);
     res.json(result.rows);
 });
 
@@ -77,6 +84,18 @@ app.get("/api/pedidos/:id", async (req: Request, res: Response) => {
     res.json({... orderResult.rows[0], items: items.rows });
 });
 
+app.get("/api/products/:id/reviews", async (req: Request, res: Response) => {
+    const productId = Number(req.params.id);
+    const result = await pool.query(
+        `SELECT r.rating, r.comment, c.username AS customer_name
+        FROM reviews r
+        JOIN customers c ON r.customer_id = c.id
+        WHERE r.product_id = $1`,
+        [productId]
+    );
+    res.json(result.rows);
+});
+
 // Añadir producto a la web
 app.post("/api/products", async (req: Request<{}, {}, {
     name: string; description?: string; price: number;
@@ -104,7 +123,7 @@ app.post("/api/products", async (req: Request<{}, {}, {
     res.status(201).json({ message: "producto añadido correctamente", product: result.rows[0] });
 });
 
-app.post("/api/pedidos", async (req: Request<{}, {}, {
+app.post("/api/orders", async (req: Request<{}, {}, {
     items: { product_id: number; quantity: number; price: number }[];
     address: string;
 }>, res: Response) => {
@@ -172,7 +191,40 @@ app.post("/api/pedidos", async (req: Request<{}, {}, {
     }
 });
 
+// POST /api/products/:id/reviews — crea una nueva reseña. Recibe { rating, comment, customerId } en el body. Valida que rating esté entre 1 y 5.
+app.post("/api/products/:id/reviews", async (req: Request<{ id: string }, {}, {
+    rating: number; comment?: string; customerId: number;
+}>, res: Response) => {
 
+    const productId = Number(req.params.id);
+    const { rating, comment, customerId } = req.body;
+    if (rating === undefined || rating < 1 || rating > 5) {
+        return res.status(400).json({ error: "Rating debe ser un número entre 1 y 5" });
+    }
+    const commentText = comment ?? "";
+
+    const productResult = await pool.query( 
+        "SELECT id FROM products WHERE id = $1 AND deleted_at IS NULL",
+        [productId]
+    );
+    if (productResult.rows.length === 0) {
+        return res.status(404).json({ error: "Producto no encontrado" });
+    }
+    
+    const customerResult = await pool.query(
+        "SELECT id FROM customers WHERE id = $1",
+        [customerId]
+    );
+    if (customerResult.rows.length === 0) {
+        return res.status(404).json({ error: "Cliente no encontrado" });
+    }
+
+    const result = await pool.query(
+        "INSERT INTO reviews (product_id, customer_id, rating, comment) VALUES ($1, $2, $3, $4) RETURNING *",
+        [productId, customerId, rating, commentText]
+    );
+    res.status(201).json({ message: "Reseña creada correctamente", review: result.rows[0] });
+});
 
 // AÑADIR AL DISCO DE CASA A PARTIR DE AQUI
 // Modifica, en este caso, todo el producto seleccionado
