@@ -52,6 +52,7 @@ app.get("/api/products/inactive", async (req: Request, res: Response) => {
 app.get("/api/products/:id", async (req: Request, res: Response) => {
     const id = Number(req.params.id);
     const result = await pool.query("SELECT * FROM products WHERE id = $1", [id]);
+    
     if (result.rows.length === 0) {
         return res.status(404).json({ message: "Producto no encontrado" });
     }
@@ -191,10 +192,7 @@ app.post("/api/orders", async (req: Request<{}, {}, {
     }
 });
 
-// POST /api/products/:id/reviews — crea una nueva reseña. Recibe { rating, comment, customerId } en el body. Valida que rating esté entre 1 y 5.
-app.post("/api/products/:id/reviews", async (req: Request<{ id: string }, {}, {
-    rating: number; comment?: string; customerId: number;
-}>, res: Response) => {
+app.post("/api/products/:id/reviews", async (req: Request<{ id: string }, {}, {rating: number; comment?: string; customerId: number;}>, res: Response) => {
 
     const productId = Number(req.params.id);
     const { rating, comment, customerId } = req.body;

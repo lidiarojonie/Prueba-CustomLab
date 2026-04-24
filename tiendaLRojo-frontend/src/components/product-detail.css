@@ -1,6 +1,7 @@
 .product-detail-container {
     display: flex;
-    justify-content: center;
+    flex-direction: column;
+    align-items: center;
     padding: 2rem;
 }
 
@@ -54,4 +55,179 @@
 
 .product-detail .stock {
     font-size: 1.1rem;
+}
+
+/* Estilos para el botón Añadir al carrito */
+.add-to-cart-button {
+    width: 100%;
+    padding: 0.8rem;
+    background-color: #10b981;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    font-size: 1rem;
+    font-weight: bold;
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+.add-to-cart-button:hover:not(:disabled) {
+    background-color: #059669;
+}
+
+.add-to-cart-button:disabled {
+    background-color: #d1d5db;
+    cursor: not-allowed;
+}
+
+/* Sección de reseñas */
+.reviews-section {
+    max-width: 600px;
+    width: 100%;
+    margin-top: 3rem;
+    padding-top: 2rem;
+    border-top: 2px solid #e5e7eb;
+}
+
+.reviews-section h2 {
+    font-size: 1.5rem;
+    margin-bottom: 1.5rem;
+    color: #333;
+}
+
+/* Lista de reseñas */
+.reviews-list {
+    margin-bottom: 2rem;
+    max-height: 400px;
+    overflow-y: auto;
+}
+
+.review-card {
+    background-color: #f9fafb;
+    padding: 1.2rem;
+    border-radius: 6px;
+    margin-bottom: 1rem;
+    border-left: 4px solid #3b82f6;
+}
+
+.review-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.8rem;
+}
+
+.review-header strong {
+    font-size: 1rem;
+    color: #333;
+}
+
+.review-stars {
+    font-size: 1rem;
+    color: #f59e0b;
+    letter-spacing: 2px;
+}
+
+.review-comment {
+    color: #555;
+    line-height: 1.6;
+    margin-bottom: 0.5rem;
+    word-wrap: break-word;
+}
+
+.review-date {
+    color: #999;
+    font-size: 0.85rem;
+}
+
+/* Formulario de reseña */
+.review-form {
+    background-color: #f3f4f6;
+    padding: 1.5rem;
+    border-radius: 6px;
+    margin-top: 2rem;
+}
+
+.review-form h3 {
+    font-size: 1.3rem;
+    margin-bottom: 1rem;
+    color: #333;
+}
+
+.form-group {
+    margin-bottom: 1.2rem;
+}
+
+.form-group label {
+    display: block;
+    font-weight: bold;
+    color: #333;
+    margin-bottom: 0.5rem;
+    font-size: 0.95rem;
+}
+
+.form-group select,
+.form-group textarea {
+    width: 100%;
+    padding: 0.7rem;
+    border: 1px solid #d1d5db;
+    border-radius: 4px;
+    font-size: 0.95rem;
+    font-family: inherit;
+    background-color: white;
+}
+
+.form-group textarea {
+    resize: vertical;
+    min-height: 100px;
+}
+
+.form-group select:focus,
+.form-group textarea:focus {
+    outline: none;
+    border-color: #3b82f6;
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+/* Botón de envío */
+.submit-review-btn {
+    width: 100%;
+    padding: 0.8rem;
+    background-color: #3b82f6;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    font-size: 1rem;
+    font-weight: bold;
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+.submit-review-btn:hover {
+    background-color: #2563eb;
+}
+
+.submit-review-btn:active {
+    background-color: #1d4ed8;
+}
+
+/* Mensajes de éxito y error */
+.success-msg {
+    color: #10b981;
+    background-color: #d1fae5;
+    padding: 0.8rem;
+    border-radius: 4px;
+    margin-top: 1rem;
+    text-align: center;
+    font-weight: bold;
+}
+
+.error-msg {
+    color: #ef4444;
+    background-color: #fee2e2;
+    padding: 0.8rem;
+    border-radius: 4px;
+    margin-top: 1rem;
+    text-align: center;
+    font-weight: bold;
 }
