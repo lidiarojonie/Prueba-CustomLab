@@ -88,10 +88,11 @@ app.get("/api/pedidos/:id", async (req: Request, res: Response) => {
 app.get("/api/products/:id/reviews", async (req: Request, res: Response) => {
     const productId = Number(req.params.id);
     const result = await pool.query(
-        `SELECT r.rating, r.comment, c.username AS customer_name
+        `SELECT r.id, r.rating, r.comment, r.created_at, c.username AS customer_name
         FROM reviews r
         JOIN customers c ON r.customer_id = c.id
-        WHERE r.product_id = $1`,
+        WHERE r.product_id = $1
+        ORDER BY r.created_at DESC`,
         [productId]
     );
     res.json(result.rows);
