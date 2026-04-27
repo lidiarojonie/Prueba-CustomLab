@@ -3,9 +3,14 @@ import type { Request, Response } from "express";
 import cors from "cors";
 import type { Product } from "./types.ts";
 import { pool } from "./db.ts";
+import bcrypt from "bcrypt";
+import jwt from "jsonwebtoken";
+import type { JwtPayload } from "jsonwebtoken";
 
 const app = express();
 const PORT = 3000;
+
+const JWT_SECRET = process.env.JWT_SECRET ?? "dinosarioRAWR";
 
 const products: Product[] = [
     { id: 1, name: "Camiseta Unboxing", description: "Camiseta negra con diseño retro de unboxing.", price: 19.99, category: "Ropa", stock: 50, image_url: "https://placehold.co/200x200?text=Camiseta" },
@@ -222,6 +227,62 @@ app.post("/api/products/:id/reviews", async (req: Request<{ id: string }, {}, {r
         [productId, customerId, rating, commentText]
     );
     res.status(201).json({ message: "Reseña creada correctamente", review: result.rows[0] });
+});
+
+app.post("api/auth/register", async (req: Request<{}, {}, { 
+    username: string, email: string, password: string, full_name?: string 
+}>, res: Response) => {
+
+    const { username, email, password, full_name } = req.body;
+    if (!username || !email || !password) {
+        return res.status(400).json({ error: "Username, email y password son requeridos" });
+    }
+
+    const existingUser = await pool.query(
+        "SELECT 1 FROM customers WHERE username = $1 OR email = $2",
+        [username, email]
+    );
+
+    if (existingUser.rows.length > 0) {
+        return res.status(400).json({ error: "El nombre de usuario o el correo electrónico ya están en uso" });
+    }
+
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    const result = await pool.query(
+        "INSERT INTO customers (username, email, password, full_name) VALUES ($1, $2, $3, $4) RETURNING id, username, email, full_name",
+        [username, email, hashedPassword, full_name ?? null]
+    );
+
+    res.status(201).json({ message: "Usuario registrado correctamente", user: result.rows[0] });
+});
+
+app.post("/api/auth/login", async (req: Request<{}, {}, { username: string; password: string }>, res: Response) => {
+    const { username, password } = req.body;
+    if (!username || !password) {
+        return res.status(400).json({ error: "Username y password son requeridos" });
+    }
+    const userResult = await pool.query(
+        "SELECT id, username, password_hash, role FROM customers WHERE username = $1",
+        [username]
+    );
+    if (userResult.rows.length === 0) {
+        return res.status(400).json({ error: "Credenciales inválidas" });
+    }
+
+    const user = userResult.rows[0];
+    const passwordMatch = await bcrypt.compare(password, user.password_hash);
+    if (!passwordMatch) {
+        return res.status(400).json({ error: "Credenciales inválidas" });
+    }
+
+    const token = jwt.sign(
+        { id: user.id, username: user.username, role: user.role } as JwtPayload, 
+        JWT_SECRET, 
+        { expiresIn: "2h" }
+    
+    );
+    res.json({ message: "Login exitoso", token, customer: { id: user.id, username: user.username, role: user.role } });
 });
 
 // AÑADIR AL DISCO DE CASA A PARTIR DE AQUI
