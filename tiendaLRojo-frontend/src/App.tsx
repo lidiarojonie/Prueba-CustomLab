@@ -60,6 +60,7 @@ function App() {
   };
   // Hasta aqui
 
+  // Añaidir "Authentication" : `Bearer ${sessionStorage.getItem("token")}` a los headers de las peticiones fetch que lo requieran (POST, PUT, DELETE)
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const formData = new FormData(e.currentTarget);
@@ -73,8 +74,11 @@ function App() {
     };
 
     fetch('http://localhost:3000/api/products', {
+      credentials: 'include',
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 
+        'Content-Type': 'application/json',
+      },
       body: JSON.stringify(newProduct)
     })
       .then(res => res.json())
