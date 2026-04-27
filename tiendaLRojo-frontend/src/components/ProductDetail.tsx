@@ -61,7 +61,7 @@ export function ProductDetail() {
         fetch(`http://localhost:3000/api/products/${id}/reviews`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ rating: newRating, comment: newComment, customerId: 1 }),
+            body: JSON.stringify({ "rating": newRating, "comment": newComment, "customerId": 1 }),
         })
             .then(async (res) => {
                 const data = await res.json().catch(() => null);

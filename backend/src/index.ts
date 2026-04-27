@@ -1,22 +1,48 @@
 import express from "express";
-import type { Request, Response } from "express";
+import type { NextFunction, Request, Response } from "express";
 import cors from "cors";
 import type { Product } from "./types.ts";
 import { pool } from "./db.ts";
+import bcrypt from "bcrypt";
+import jwt from "jsonwebtoken";
+import type { JwtPayload } from "jsonwebtoken";
+import cookieParser from "cookie-parser";
 
 const app = express();
 const PORT = 3000;
+const JWT_SECRET = process.env.JWT_SECRET ?? "dinosarioRAWR";
 
-const products: Product[] = [
-    { id: 1, name: "Camiseta Unboxing", description: "Camiseta negra con diseño retro de unboxing.", price: 19.99, category: "Ropa", stock: 50, image_url: "https://placehold.co/200x200?text=Camiseta" },
-    { id: 2, name: "Taza Bug Hunter", description: "Taza blanca con mensaje para programadores.", price: 12.50, category: "Cocina", stock: 30, image_url: "https://placehold.co/200x200?text=Taza" },
-    { id: 3, name: "Funda Dark Mode", description: "Funda para móvil con diseño minimalista.", price: 15.00, category: "Accesorios", stock: 20, image_url: "https://placehold.co/200x200?text=Funda" },
-    { id: 4, name: "Sudadera npm ci", description: "Sudadera gris con eslogan de desarrollo.", price: 35.00, category: "Ropa", stock: 15, image_url: "https://placehold.co/200x200?text=Sudadera" },
-    { id: 5, name: "Sticker Pack Dev", description: "Set de 10 stickers con iconos tech.", price: 5.99, category: "Papelería", stock: 100, image_url: "https://placehold.co/200x200?text=Stickers" }
-];
-
-app.use(cors());
+app.use(cors( { 
+    origin: "http://localhost:5173", 
+    credentials: true 
+} ));
 app.use(express.json());
+app.use(cookieParser());
+
+interface AuthRequest extends Request {
+    customer? : { id: number; username: string; role: string };
+}
+
+const authenticateToken = (req: AuthRequest, res: Response, next: NextFunction) => {
+    const authHeader = req.cookies.token || req.headers.authorization;
+    if (!authHeader) {
+        return res.status(401).json({ message: "Acceso no autorizado" });
+    }
+
+    const token = authHeader.split(" ")[1];
+    if (!token) {
+        return res.status(401).json({ message: "Token no proporcionado" });
+    }
+
+    try{
+        const payload = jwt.verify(token, JWT_SECRET) as JwtPayload;
+        req.customer = { id: payload.id, username: payload.username, role: payload.role };
+        next();
+
+    } catch (error) {
+        return res.status(403).json({ message: "Token inválido" });
+    }
+};
 
 app.listen(PORT, () => {
     console.log(`Servidor escuchando en http://localhost:${PORT}`);
@@ -98,12 +124,20 @@ app.get("/api/products/:id/reviews", async (req: Request, res: Response) => {
     res.json(result.rows);
 });
 
+// Usar este endpoint de ejemplo para mejorar el resto de endpoints que requieren autenticación, extrayendo el usuario del token y usándolo para personalizar la respuesta o controlar el acceso.
 // Añadir producto a la web
-app.post("/api/products", async (req: Request<{}, {}, {
+app.post("/api/products", authenticateToken, async (req: Request<{}, {}, {
     name: string; description?: string; price: number;
     category?: string; stock?: number; image_url?: string;
 }>, res: Response) => {
     const { name, description, price, category, stock, image_url } = req.body;
+
+    // Comprobar que el usuario autenticado tiene rol de admin o employee
+    const user = (req as AuthRequest).customer!;
+    if (user.role !== "admin" && user.role !== "employee") {
+        return res.status(403).json({ error: "Acceso denegado" });
+    }
+
     if (!name) return res.status(400).json({ error: "Nombre es requerido" });
     if (price === undefined || price <= 0) {
         return res.status(400).json({ error: "El precio debe ser mayor que 0" });
@@ -223,6 +257,64 @@ app.post("/api/products/:id/reviews", async (req: Request<{ id: string }, {}, {r
         [productId, customerId, rating, commentText]
     );
     res.status(201).json({ message: "Reseña creada correctamente", review: result.rows[0] });
+});
+
+app.post("api/auth/register", async (req: Request<{}, {}, { 
+    username: string, email: string, password: string, full_name?: string 
+}>, res: Response) => {
+
+    const { username, email, password, full_name } = req.body;
+    if (!username || !email || !password) {
+        return res.status(400).json({ error: "Username, email y password son requeridos" });
+    }
+
+    const existingUser = await pool.query(
+        "SELECT 1 FROM customers WHERE username = $1 OR email = $2",
+        [username, email]
+    );
+
+    if (existingUser.rows.length > 0) {
+        return res.status(400).json({ error: "El nombre de usuario o el correo electrónico ya están en uso" });
+    }
+
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    const result = await pool.query(
+        "INSERT INTO customers (username, email, password, full_name) VALUES ($1, $2, $3, $4) RETURNING id, username, email, full_name",
+        [username, email, hashedPassword, full_name ?? null]
+    );
+
+    res.status(201).json({ message: "Usuario registrado correctamente", user: result.rows[0] });
+});
+
+app.post("/api/auth/login", async (req: Request<{}, {}, { username: string; password: string }>, res: Response) => {
+    const { username, password } = req.body;
+    if (!username || !password) {
+        return res.status(400).json({ error: "Username y password son requeridos" });
+    }
+    const userResult = await pool.query(
+        "SELECT id, username, password_hash, role FROM customers WHERE username = $1",
+        [username]
+    );
+    if (userResult.rows.length === 0) {
+        return res.status(400).json({ error: "Credenciales inválidas" });
+    }
+
+    const user = userResult.rows[0];
+    const passwordMatch = await bcrypt.compare(password, user.password_hash);
+    if (!passwordMatch) {
+        return res.status(400).json({ error: "Credenciales inválidas" });
+    }
+
+    const token = jwt.sign(
+        { id: user.id, username: user.username, role: user.role } as JwtPayload, 
+        JWT_SECRET, 
+        { expiresIn: "2h" }
+    
+    );
+
+    res.cookie("token", token, { httpOnly: true, secure: false, sameSite: "lax", maxAge: 2 * 60 * 60 * 1000 }); // secure: true en producción con HTTPS
+    res.json({ message: "Login exitoso", token });
 });
 
 // AÑADIR AL DISCO DE CASA A PARTIR DE AQUI
