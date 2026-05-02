@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import type { Product } from './types.ts';
 import type { CartItem } from './types.ts';
 import ProductCard from './components/ProductCard';
-import Cart from './components/cart';
+import CartSummary from './components/CartSummary';
 import { useNavigate } from 'react-router-dom';
 
 function App() {
@@ -130,13 +130,30 @@ function App() {
     setCart(prev => prev.filter(item => item.product.id !== productId));
   };
 
+  const updateQuantity = (productId: number, delta: number): void => {
+    setCart(prev =>
+      prev
+        .map(item =>
+          item.product.id === productId
+            ? { ...item, quantity: Math.max(1, item.quantity + delta) }
+            : item
+        )
+        .filter(item => item.quantity > 0)
+    );
+  };
+
   const clearCart = (): void => {
     setCart([]);
   };
 
   return (
     <>
-      <Cart cart={cart} onRemoveFromCart={removeFromCart} onClearCart={clearCart} />
+      <CartSummary
+        cart={cart}
+        onUpdateQuantity={updateQuantity}
+        onRemove={removeFromCart}
+        onConfirm={clearCart}
+      />
 
       <div className='formulario-producto'>
         <h3>Añadir producto</h3>
