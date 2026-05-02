@@ -7,17 +7,20 @@ import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { ProductDetail } from './components/ProductDetail.tsx';
 import CheckoutPage from './components/CheckoutPage.tsx';
 import NotFound from './NotFound.tsx';
+import { CartProvider } from './context/CartContext.tsx';
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <BrowserRouter>
-      <Header />
-      <Routes>
-        <Route path="/" element={<App />} />
-        <Route path="product/:id" element={<ProductDetail />} />
-        <Route path="checkout" element={<CheckoutPage />} />
-        <Route path="*" element={<NotFound />} />
-      </Routes>
-    </BrowserRouter>
+    <CartProvider>
+      <BrowserRouter>
+        <Header />
+        <Routes>
+          <Route path="/" element={<App />} />
+          <Route path="product/:id" element={<ProductDetail />} />
+          <Route path="checkout" element={<CheckoutPage />} />
+          <Route path="*" element={<NotFound />} />
+        </Routes>
+      </BrowserRouter>
+    </CartProvider>
   </StrictMode>,
 )

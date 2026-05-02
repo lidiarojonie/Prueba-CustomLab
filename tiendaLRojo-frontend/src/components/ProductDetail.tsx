@@ -3,31 +3,18 @@ import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import NotFound from "../NotFound";
 import "./product-detail.css";
-import type { CartItem } from "../types";
+import { useCart } from "../context/CartContext";
 
 export function ProductDetail() {
     const { id } = useParams();
     const navigate = useNavigate();
+    const { addToCart } = useCart();
     const [product, setProduct] = useState<Product | null>(null);
     const [error, setError] = useState(false);
     const [reviews, setReviews] = useState<Review[]>([]);
     const [newRating, setNewRating] = useState(5);
     const [newComment, setNewComment] = useState("");
     const [msg, setMsg] = useState("");
-
-    const addToCartFromDetail = (product: Product): void => {
-        const saved = sessionStorage.getItem("cart"); 
-        const cart : CartItem[] = saved ? JSON.parse(saved) : [];
-        const existingItem = cart.find(item => item.product.id === product.id);
-        if (existingItem) {
-            if (existingItem.quantity >= product.stock) return;
-            sessionStorage.setItem("cart", JSON.stringify(cart.map(item =>
-                item.product.id === product.id ? { ...item, quantity: item.quantity + 1 } : item
-            )));
-        } else {
-            sessionStorage.setItem("cart", JSON.stringify([...cart, { product, quantity: 1 }]));
-        }
-    };
 
     const loadReviews = () => {
         fetch(`http://localhost:3000/api/products/${id}/reviews`)
@@ -105,7 +92,7 @@ export function ProductDetail() {
                     {product.stock > 0 ? `En Stock - ${product.stock} unidades` : "Sin Stock - 0 unidades"}
                 </p>
 
-                <button className="add-to-cart-button" onClick={() => addToCartFromDetail(product)} disabled={product.stock === 0}>
+                <button className="add-to-cart-button" onClick={() => addToCart(product)} disabled={product.stock === 0}>
                     Añadir al carrito
                 </button>
             </div>

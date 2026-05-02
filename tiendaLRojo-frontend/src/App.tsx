@@ -1,17 +1,13 @@
 import { useEffect, useState } from 'react';
 import type { Product } from './types.ts';
-import type { CartItem } from './types.ts';
 import ProductCard from './components/ProductCard';
-import CartSummary from './components/CartSummary';
 import { useNavigate } from 'react-router-dom';
+import { useCart } from './context/CartContext.tsx';
 
 function App() {
   const navigate = useNavigate();
+  const { addToCart } = useCart();
   const [products, setProducts] = useState<Product[]>([]);
-  const [cart, setCart] = useState<CartItem[]>(() => {
-    const saved = sessionStorage.getItem("cart");
-    return saved ? JSON.parse(saved) : [];
-  });
   
   useEffect(() => {
     fetch('http://localhost:3000/api/products')
@@ -19,10 +15,6 @@ function App() {
       .then((data) => setProducts(data))
       .catch((error) => console.error("Error:", error));
   }, []);
-
-  useEffect(() => {
-    sessionStorage.setItem("cart", JSON.stringify(cart));
-  }, [cart]);
 
   // Actualizar desde aqui
   const loadProducts = () => {
@@ -107,54 +99,8 @@ function App() {
       .catch((error) => console.error("Error: ", error));
   };
 
-  const addToCart = (product: Product): void => {
-    setCart(prev => {
-      const existing = prev.find(cartItemtemporal => cartItemtemporal.product.id === product.id);
-
-      if (existing) {
-        if (existing.quantity >= product.stock)
-          return prev;
-        
-        return prev.map(cartItemtemporal => 
-          cartItemtemporal.product.id === product.id
-          ? { ...cartItemtemporal, quantity: cartItemtemporal.quantity + 1}
-          :cartItemtemporal
-        );
-      }
-
-      return [...prev, {product, quantity: 1}]
-    });
-  };
-
-  const removeFromCart = (productId: number): void => {
-    setCart(prev => prev.filter(item => item.product.id !== productId));
-  };
-
-  const updateQuantity = (productId: number, delta: number): void => {
-    setCart(prev =>
-      prev
-        .map(item =>
-          item.product.id === productId
-            ? { ...item, quantity: Math.max(1, item.quantity + delta) }
-            : item
-        )
-        .filter(item => item.quantity > 0)
-    );
-  };
-
-  const clearCart = (): void => {
-    setCart([]);
-  };
-
   return (
     <>
-      <CartSummary
-        cart={cart}
-        onUpdateQuantity={updateQuantity}
-        onRemove={removeFromCart}
-        onConfirm={clearCart}
-      />
-
       <div className='formulario-producto'>
         <h3>Añadir producto</h3>
         <form onSubmit={handleSubmit} className="form-horizontal">

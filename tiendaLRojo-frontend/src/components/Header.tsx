@@ -1,4 +1,7 @@
-import type { CartItem } from '../types';
+import { useState } from 'react';
+import { useCart } from '../context/CartContext';
+import CartSummary from './CartSummary';
+import { useNavigate } from 'react-router-dom';
 
 interface User {
   id: number;
@@ -8,12 +11,16 @@ interface User {
 }
 
 function Header() {
-  // Leer carrito de sessionStorage
-  const rawCart = sessionStorage.getItem("cart");
-  const cart: CartItem[] = rawCart ? JSON.parse(rawCart) : [];
-  const cartCount = cart.reduce((acc, item) => acc + item.quantity, 0);
+  const navigate = useNavigate();
+  const { cart, cartCount, updateQuantity, removeFromCart, clearCart } = useCart();
+  const [isCartOpen, setIsCartOpen] = useState(false);
 
-  // Leer usuario de sessionStorage
+  const toggleCart = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setIsCartOpen(!isCartOpen);
+  };
+
+  // Leer usuario de sessionStorage (esto podría ir a un AuthContext en el futuro)
   const rawUser = sessionStorage.getItem("user");
   const user: User | null = rawUser ? JSON.parse(rawUser) : null;
 
@@ -22,7 +29,7 @@ function Header() {
       <header className="site-header">
         <div className="header-content">
           <div className="header-title">
-            <h1>CustomShop</h1>
+            <h1 style={{ cursor: 'pointer' }} onClick={() => navigate('/')}>CustomShop</h1>
             <p>Personaliza cualquier objeto</p>
           </div>
           
@@ -33,11 +40,33 @@ function Header() {
               </div>
             )}
             
-            {cartCount > 0 && (
-              <div className="cart-counter">
-                <span className="counter-badge">{cartCount}</span>
-              </div>
-            )}
+            <div className="cart-container">
+              <button 
+                type="button"
+                className="cart-toggle-btn" 
+                onClick={toggleCart}
+                aria-label="Ver carrito"
+              >
+                <span className="cart-icon">🛒</span>
+                {cartCount > 0 && (
+                  <span className="counter-badge">{cartCount}</span>
+                )}
+              </button>
+
+              {isCartOpen && (
+                <div className="cart-dropdown">
+                  <CartSummary
+                    cart={cart}
+                    onUpdateQuantity={updateQuantity}
+                    onRemove={removeFromCart}
+                    onConfirm={() => {
+                      setIsCartOpen(false);
+                      navigate('/checkout');
+                    }}
+                  />
+                </div>
+              )}
+            </div>
           </div>
         </div>
       </header>
@@ -45,4 +74,4 @@ function Header() {
   )
 }
 
-export default Header;
+export default Header;

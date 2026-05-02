@@ -1,6 +1,6 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import type { CartItem } from '../types';
+import { useCart } from '../context/CartContext';
 import './CheckoutPage.css';
 
 interface OrderItem {
@@ -21,23 +21,11 @@ interface OrderResponse {
 
 function CheckoutPage() {
   const navigate = useNavigate();
-  const [cart, setCart] = useState<CartItem[]>([]);
+  const { cart, clearCart } = useCart();
   const [address, setAddress] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
   const [orderCreated, setOrderCreated] = useState<OrderResponse['order'] | null>(null);
-
-  // Leer carrito desde sessionStorage al montarse
-  useEffect(() => {
-    const savedCart = sessionStorage.getItem('cart');
-    if (savedCart) {
-      try {
-        setCart(JSON.parse(savedCart));
-      } catch (e) {
-        console.error('Error al parsear carrito:', e);
-      }
-    }
-  }, []);
 
   const getPrice = (price: number | string): number => {
     return typeof price === 'string' ? parseFloat(price) : price;
@@ -88,7 +76,7 @@ function CheckoutPage() {
       // Pedido exitoso
       setOrderCreated(data.order);
       // Limpiar carrito
-      sessionStorage.removeItem('cart');
+      clearCart();
     } catch (err) {
       setError('Error de conexión. Por favor, intenta de nuevo.');
       console.error('Error:', err);
