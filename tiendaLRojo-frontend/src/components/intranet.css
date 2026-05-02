@@ -134,7 +134,8 @@
   background-color: white;
   border: 1px solid #ddd;
   border-radius: 8px;
-  padding: 1rem 1.5rem;
+  padding: 1.5rem 2rem;
+  max-width: 600px;
 }
 
 .clockin-page h2 {
@@ -143,9 +144,96 @@
   margin-bottom: 0.8rem;
 }
 
-.clockin-page p {
+.clockin-status {
   color: #555;
   font-size: 0.95rem;
+  margin-bottom: 1.5rem;
+}
+
+.status-in {
+  color: #16a34a;
+  font-weight: bold;
+}
+
+.status-out {
+  color: #6b7280;
+  font-weight: bold;
+}
+
+.clockin-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.clockin-form label {
+  font-size: 0.85rem;
+  font-weight: bold;
+  color: #555;
+}
+
+.clockin-textarea {
+  width: 100%;
+  padding: 0.6rem;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  font-family: inherit;
+  font-size: 0.9rem;
+  resize: vertical;
+}
+
+.clockin-textarea:focus {
+  outline: none;
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
+}
+
+.clockin-button {
+  padding: 0.7rem 1.5rem;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  font-size: 1rem;
+  font-weight: bold;
+  cursor: pointer;
+  transition: background-color 0.2s;
+  align-self: flex-start;
+}
+
+.clockin-button.clock-in {
+  background-color: #16a34a;
+}
+
+.clockin-button.clock-in:hover:not(:disabled) {
+  background-color: #15803d;
+}
+
+.clockin-button.clock-out {
+  background-color: #dc2626;
+}
+
+.clockin-button.clock-out:hover:not(:disabled) {
+  background-color: #b91c1c;
+}
+
+.clockin-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.clockin-confirmation {
+  margin-top: 1rem;
+  background-color: #d1fae5;
+  border: 1px solid #86efac;
+  border-radius: 4px;
+  padding: 0.75rem 1rem;
+  color: #166534;
+  font-size: 0.95rem;
+}
+
+.clockin-confirmation p {
+  color: #166534;
+  margin: 0.25rem 0;
 }
 
 /* Responsive */
@@ -178,5 +266,91 @@
   .intranet-user {
     padding: 0.4rem 0.75rem;
     font-size: 0.8rem;
+  }
+}
+
+/* ===========================
+   ClockHistory
+   =========================== */
+
+.clock-history {
+  background-color: white;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  padding: 1.5rem 2rem;
+}
+
+.clock-history h2 {
+  font-size: 1.3rem;
+  color: #333;
+  margin-bottom: 1rem;
+}
+
+.history-empty {
+  color: #6b7280;
+  font-style: italic;
+}
+
+.history-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+}
+
+.history-table th {
+  background-color: #f5f5f5;
+  text-align: left;
+  padding: 0.6rem 0.75rem;
+  color: #333;
+  font-weight: bold;
+  border-bottom: 2px solid #ddd;
+}
+
+.history-table td {
+  padding: 0.6rem 0.75rem;
+  border-bottom: 1px solid #eee;
+  vertical-align: top;
+}
+
+.history-date {
+  font-weight: 500;
+  text-transform: capitalize;
+}
+
+.history-notes {
+  font-size: 0.85rem;
+  color: #555;
+}
+
+/* Fila completa (entrada + salida) */
+.row-complete {
+  background-color: #f0fdf4;
+}
+
+.row-complete:hover {
+  background-color: #dcfce7;
+}
+
+/* Fila incompleta (falta entrada o salida) */
+.row-incomplete {
+  background-color: #fef2f2;
+}
+
+.row-incomplete:hover {
+  background-color: #fee2e2;
+}
+
+@media (max-width: 600px) {
+  .history-table {
+    font-size: 0.8rem;
+  }
+
+  .history-table th,
+  .history-table td {
+    padding: 0.4rem 0.5rem;
+  }
+
+  .clock-history {
+    padding: 1rem;
   }
 }

@@ -421,3 +421,151 @@ app.patch("/api/products/:id/toggle", async (req, res) => {
         product: p
     });
 });
+
+// ===========================
+// Clock Events (Fichajes)
+// ===========================
+
+// Crear tabla clock_events si no existe
+pool.query(`
+    CREATE TABLE IF NOT EXISTS clock_events (
+        id SERIAL PRIMARY KEY,
+        employee_id INTEGER NOT NULL,
+        type VARCHAR(3) NOT NULL CHECK (type IN ('in', 'out')),
+        note TEXT DEFAULT '',
+        recorded_at TIMESTAMPTZ DEFAULT NOW()
+    )
+`).then(() => console.log("Tabla clock_events verificada"))
+  .catch(() => console.log("Tabla clock_events ya existe"));
+
+// ¿Tiene fichaje de entrada sin salida?
+app.get("/api/clock/status", async (req: Request, res: Response) => {
+    const employeeId = Number(req.query.employeeId);
+    if (!employeeId) {
+        return res.status(400).json({ error: "employeeId es requerido" });
+    }
+
+    // Buscar el último evento del empleado
+    const result = await pool.query(
+        `SELECT type FROM clock_events
+         WHERE employee_id = $1
+         ORDER BY recorded_at DESC
+         LIMIT 1`,
+        [employeeId]
+    );
+
+    // Si el último evento es 'in', está fichado (clocked in)
+    const isClockedIn = result.rows.length > 0 && result.rows[0].type === "in";
+    res.json({ isClockedIn });
+});
+
+// Registrar fichaje (entrada o salida)
+app.post("/api/clock", async (req: Request<{}, {}, {
+    employeeId: number; type: "in" | "out"; note?: string;
+}>, res: Response) => {
+    const { employeeId, type, note } = req.body;
+
+    if (!employeeId) {
+        return res.status(400).json({ error: "employeeId es requerido" });
+    }
+    if (type !== "in" && type !== "out") {
+        return res.status(400).json({ error: "type debe ser 'in' o 'out'" });
+    }
+
+    const result = await pool.query(
+        `INSERT INTO clock_events (employee_id, type, note)
+         VALUES ($1, $2, $3)
+         RETURNING id, type, recorded_at`,
+        [employeeId, type, note ?? ""]
+    );
+
+    res.status(201).json({
+        message: type === "in" ? "Entrada registrada" : "Salida registrada",
+        event: result.rows[0]
+    });
+});
+
+// Histórico de fichajes de un empleado
+app.get("/api/clock/history", async (req: Request, res: Response) => {
+    const employeeId = Number(req.query.employeeId);
+    if (!employeeId) {
+        return res.status(400).json({ error: "employeeId es requerido" });
+    }
+
+    const result = await pool.query(
+        `SELECT id, type, note, recorded_at
+         FROM clock_events
+         WHERE employee_id = $1
+         ORDER BY recorded_at DESC`,
+        [employeeId]
+    );
+
+    res.json(result.rows);
+});
+
+// ===========================
+// Admin: Gestión de usuarios
+// ===========================
+
+// Asegurar que las columnas role y active existen en customers
+pool.query(`
+    ALTER TABLE customers ADD COLUMN IF NOT EXISTS role VARCHAR(20) DEFAULT 'customer'
+`).catch(() => console.log("Columna role en customers ya existe"));
+
+pool.query(`
+    ALTER TABLE customers ADD COLUMN IF NOT EXISTS active BOOLEAN DEFAULT true
+`).catch(() => console.log("Columna active en customers ya existe"));
+
+// Listar todos los usuarios
+app.get("/api/admin/users", async (req: Request, res: Response) => {
+    const result = await pool.query(
+        "SELECT id, username, email, full_name, role, active FROM customers ORDER BY id ASC"
+    );
+    res.json(result.rows);
+});
+
+// Cambiar rol de un usuario
+app.patch("/api/admin/users/:id/role", async (req: Request<{ id: string }, {}, { role: string }>, res: Response) => {
+    const id = Number(req.params.id);
+    const { role } = req.body;
+
+    const validRoles = ["customer", "employee", "admin"];
+    if (!validRoles.includes(role)) {
+        return res.status(400).json({ error: "Rol inválido. Debe ser: customer, employee o admin" });
+    }
+
+    const result = await pool.query(
+        "UPDATE customers SET role = $1 WHERE id = $2 RETURNING id, username, email, role, active",
+        [role, id]
+    );
+
+    if (result.rows.length === 0) {
+        return res.status(404).json({ error: "Usuario no encontrado" });
+    }
+
+    res.json({ message: "Rol actualizado", user: result.rows[0] });
+});
+
+// Suspender / reactivar usuario
+app.patch("/api/admin/users/:id/status", async (req: Request<{ id: string }, {}, { active: boolean }>, res: Response) => {
+    const id = Number(req.params.id);
+    const { active } = req.body;
+
+    if (typeof active !== "boolean") {
+        return res.status(400).json({ error: "active debe ser un booleano" });
+    }
+
+    const result = await pool.query(
+        "UPDATE customers SET active = $1 WHERE id = $2 RETURNING id, username, email, role, active",
+        [active, id]
+    );
+
+    if (result.rows.length === 0) {
+        return res.status(404).json({ error: "Usuario no encontrado" });
+    }
+
+    res.json({
+        message: active ? "Usuario reactivado" : "Usuario suspendido",
+        user: result.rows[0]
+    });
+});

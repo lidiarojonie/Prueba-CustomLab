@@ -29,6 +29,12 @@ function IntranetLayout() {
                     >
                         Fichajes
                     </NavLink>
+                    <NavLink
+                        to="/intranet/historico"
+                        className={({ isActive }) => isActive ? "intranet-nav-link active" : "intranet-nav-link"}
+                    >
+                        Histórico
+                    </NavLink>
                 </nav>
             </header>
 

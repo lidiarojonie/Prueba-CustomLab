@@ -11,6 +11,8 @@ import { CartProvider } from './context/CartContext.tsx';
 import IntranetLayout from './components/IntranetLayout.tsx';
 import IntranetHome from './components/IntranetHome.tsx';
 import ClockInPage from './components/ClockInPage.tsx';
+import ClockHistory from './components/ClockHistory.tsx';
+import AdminUsers from './components/AdminUsers.tsx';
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
@@ -24,7 +26,9 @@ createRoot(document.getElementById('root')!).render(
           <Route path="/intranet" element={<IntranetLayout />}>
             <Route index element={<IntranetHome />} />
             <Route path="fichajes" element={<ClockInPage />} />
+            <Route path="historico" element={<ClockHistory />} />
           </Route>
+          <Route path="/admin/users" element={<AdminUsers />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>
