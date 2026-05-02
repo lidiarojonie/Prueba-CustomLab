@@ -44,6 +44,20 @@ const authenticateToken = (req: AuthRequest, res: Response, next: NextFunction) 
     }
 };
 
+const requireRole = (...roles: string[]) => {
+    return (req: AuthRequest, res: Response, next: NextFunction) => {
+        if (!req.customer) {
+            return res.status(401).json({ message: "Acceso no autorizado" });
+        }
+        
+        if (!roles.includes(req.customer.role)) {
+            return res.status(403).json({ message: "Acceso denegado: permisos insuficientes" });
+        }
+        
+        next();
+    };
+};
+
 app.listen(PORT, () => {
     console.log(`Servidor escuchando en http://localhost:${PORT}`);
 });
@@ -259,7 +273,7 @@ app.post("/api/products/:id/reviews", async (req: Request<{ id: string }, {}, { 
     res.status(201).json({ message: "Reseña creada correctamente", review: result.rows[0] });
 });
 
-app.post("api/auth/register", async (req: Request<{}, {}, {
+app.post("/api/auth/register", async (req: Request<{}, {}, {
     username: string, email: string, password: string, full_name?: string
 }>, res: Response) => {
 
@@ -287,21 +301,25 @@ app.post("api/auth/register", async (req: Request<{}, {}, {
     res.status(201).json({ message: "Usuario registrado correctamente", user: result.rows[0] });
 });
 
-app.post("/api/auth/login", async (req: Request<{}, {}, { username: string; password: string }>, res: Response) => {
-    const { username, password } = req.body;
-    if (!username || !password) {
-        return res.status(400).json({ error: "Username y password son requeridos" });
+app.post("/api/auth/login", async (req: Request<{}, {}, { identifier?: string; email?: string; password: string }>, res: Response) => {
+    const { identifier, email, password } = req.body;
+    const loginIdentifier = identifier || email;
+    
+    if (!loginIdentifier || !password) {
+        return res.status(400).json({ error: "Email/identifier y password son requeridos" });
     }
+    
     const userResult = await pool.query(
-        "SELECT id, username, password_hash, role FROM customers WHERE username = $1",
-        [username]
+        "SELECT id, username, email, password, role FROM customers WHERE email = $1 OR username = $2",
+        [loginIdentifier, loginIdentifier]
     );
+    
     if (userResult.rows.length === 0) {
         return res.status(400).json({ error: "Credenciales inválidas" });
     }
 
     const user = userResult.rows[0];
-    const passwordMatch = await bcrypt.compare(password, user.password_hash);
+    const passwordMatch = await bcrypt.compare(password, user.password);
     if (!passwordMatch) {
         return res.status(400).json({ error: "Credenciales inválidas" });
     }
@@ -314,7 +332,7 @@ app.post("/api/auth/login", async (req: Request<{}, {}, { username: string; pass
     );
 
     res.cookie("token", token, { httpOnly: true, secure: false, sameSite: "lax", maxAge: 2 * 60 * 60 * 1000 }); // secure: true en producción con HTTPS
-    res.json({ message: "Login exitoso", token });
+    res.json({ message: "Login exitoso", token, user: { id: user.id, username: user.username, email: user.email, role: user.role } });
 });
 
 // AÑADIR AL DISCO DE CASA A PARTIR DE AQUI
@@ -439,11 +457,8 @@ pool.query(`
   .catch(() => console.log("Tabla clock_events ya existe"));
 
 // ¿Tiene fichaje de entrada sin salida?
-app.get("/api/clock/status", async (req: Request, res: Response) => {
-    const employeeId = Number(req.query.employeeId);
-    if (!employeeId) {
-        return res.status(400).json({ error: "employeeId es requerido" });
-    }
+app.get("/api/clock/status", authenticateToken, requireRole("admin", "employee"), async (req: AuthRequest, res: Response) => {
+    const employeeId = req.customer!.id;
 
     // Buscar el último evento del empleado
     const result = await pool.query(
@@ -460,14 +475,10 @@ app.get("/api/clock/status", async (req: Request, res: Response) => {
 });
 
 // Registrar fichaje (entrada o salida)
-app.post("/api/clock", async (req: Request<{}, {}, {
-    employeeId: number; type: "in" | "out"; note?: string;
-}>, res: Response) => {
-    const { employeeId, type, note } = req.body;
+app.post("/api/clock", authenticateToken, requireRole("admin", "employee"), async (req: AuthRequest, res: Response) => {
+    const employeeId = req.customer!.id;
+    const { type, note } = req.body as { type: "in" | "out"; note?: string };
 
-    if (!employeeId) {
-        return res.status(400).json({ error: "employeeId es requerido" });
-    }
     if (type !== "in" && type !== "out") {
         return res.status(400).json({ error: "type debe ser 'in' o 'out'" });
     }
@@ -486,11 +497,8 @@ app.post("/api/clock", async (req: Request<{}, {}, {
 });
 
 // Histórico de fichajes de un empleado
-app.get("/api/clock/history", async (req: Request, res: Response) => {
-    const employeeId = Number(req.query.employeeId);
-    if (!employeeId) {
-        return res.status(400).json({ error: "employeeId es requerido" });
-    }
+app.get("/api/clock/history", authenticateToken, requireRole("admin", "employee"), async (req: AuthRequest, res: Response) => {
+    const employeeId = req.customer!.id;
 
     const result = await pool.query(
         `SELECT id, type, note, recorded_at

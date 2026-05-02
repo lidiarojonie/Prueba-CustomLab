@@ -2,13 +2,7 @@ import { useState } from 'react';
 import { useCart } from '../context/CartContext';
 import CartSummary from './CartSummary';
 import { useNavigate, useLocation } from 'react-router-dom';
-
-interface User {
-  id: number;
-  email: string;
-  name: string;
-  username?: string;
-}
+import type { Customer } from '../types';
 
 function Header() {
   const navigate = useNavigate();
@@ -28,7 +22,7 @@ function Header() {
 
   // Leer usuario de sessionStorage (esto podría ir a un AuthContext en el futuro)
   const rawUser = sessionStorage.getItem("user");
-  const user: User | null = rawUser ? JSON.parse(rawUser) : null;
+  const user: Customer | null = rawUser ? JSON.parse(rawUser) : null;
 
   return (
     <>
@@ -42,7 +36,34 @@ function Header() {
           <div className="header-info">
             {user && (
               <div className="user-info">
-                <span className="user-name">👤 {user.username || user.name}</span>
+                <span className="user-name">👤 {user.username}</span>
+                <button 
+                  className="logout-btn"
+                  onClick={() => {
+                    sessionStorage.removeItem("user");
+                    sessionStorage.removeItem("token");
+                    navigate('/');
+                  }}
+                >
+                  Cerrar sesión
+                </button>
+              </div>
+            )}
+            
+            {!user && (
+              <div className="auth-buttons">
+                <button 
+                  className="login-btn"
+                  onClick={() => navigate('/login')}
+                >
+                  Iniciar sesión
+                </button>
+                <button 
+                  className="register-btn"
+                  onClick={() => navigate('/register')}
+                >
+                  Registrarse
+                </button>
               </div>
             )}
             
@@ -80,4 +101,4 @@ function Header() {
   )
 }
 
-export default Header;
+export default Header;

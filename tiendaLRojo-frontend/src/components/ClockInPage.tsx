@@ -10,7 +10,6 @@ function ClockInPage() {
     // Leer el usuario guardado por LoginPage
     const raw = sessionStorage.getItem("user");
     const user = raw ? JSON.parse(raw) : null;
-    const employeeId = user?.id ?? 1;
 
     const [isClockedIn, setIsClockedIn] = useState(false);
     const [note, setNote] = useState('');
@@ -20,7 +19,9 @@ function ClockInPage() {
 
     // Consultar estado actual al montarse
     useEffect(() => {
-        fetch(`http://localhost:3000/api/clock/status?employeeId=${employeeId}`)
+        fetch('http://localhost:3000/api/clock/status', {
+            credentials: 'include'
+        })
             .then(res => res.json())
             .then(data => {
                 setIsClockedIn(data.isClockedIn);
@@ -30,7 +31,7 @@ function ClockInPage() {
                 console.error("Error consultando estado de fichaje:", err);
                 setLoading(false);
             });
-    }, [employeeId]);
+    }, []);
 
     const handleClock = async () => {
         setSubmitting(true);
@@ -41,7 +42,8 @@ function ClockInPage() {
             const response = await fetch('http://localhost:3000/api/clock', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ employeeId, type, note })
+                credentials: 'include',
+                body: JSON.stringify({ type, note })
             });
 
             const data: { message: string; event: ClockEvent } = await response.json();

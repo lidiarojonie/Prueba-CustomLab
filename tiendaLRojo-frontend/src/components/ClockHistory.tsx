@@ -32,13 +32,14 @@ function formatDate(iso: string): string {
 function ClockHistory() {
     const raw = sessionStorage.getItem("user");
     const user = raw ? JSON.parse(raw) : null;
-    const employeeId = user?.id ?? 1;
 
     const [records, setRecords] = useState<ClockRecord[]>([]);
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        fetch(`http://localhost:3000/api/clock/history?employeeId=${employeeId}`)
+        fetch('http://localhost:3000/api/clock/history', {
+            credentials: 'include'
+        })
             .then(res => res.json())
             .then((events: ClockEvent[]) => {
                 // Ordenar cronológicamente (más antiguo primero)
@@ -116,7 +117,7 @@ function ClockHistory() {
                 console.error("Error cargando histórico:", err);
                 setLoading(false);
             });
-    }, [employeeId]);
+    }, []);
 
     if (loading) {
         return (
