@@ -1,11 +1,9 @@
 import { useNavigate } from 'react-router-dom';
+import { useUser } from '../context/UserContext.tsx';
 
 function IntranetHome() {
     const navigate = useNavigate();
-
-    // Leer el usuario guardado por LoginPage
-    const raw = sessionStorage.getItem("user");
-    const user = raw ? JSON.parse(raw) : null;
+    const { customer: user } = useUser();
 
     return (
         <div className="intranet-home">

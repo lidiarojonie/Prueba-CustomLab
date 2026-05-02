@@ -60,11 +60,18 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
   const updateQuantity = (productId: number, delta: number) => {
     setCart(prev =>
       prev
-        .map(item =>
-          item.product.id === productId
-            ? { ...item, quantity: Math.max(1, item.quantity + delta) }
-            : item
-        )
+        .map(item => {
+          if (item.product.id === productId) {
+            const newQuantity = item.quantity + delta;
+            // Si intentamos subir, comprobar stock
+            if (delta > 0 && newQuantity > item.product.stock) {
+              alert(`No hay suficiente stock. Máximo disponible: ${item.product.stock}`);
+              return item;
+            }
+            return { ...item, quantity: Math.max(1, newQuantity) };
+          }
+          return item;
+        })
         .filter(item => item.quantity > 0)
     );
   };

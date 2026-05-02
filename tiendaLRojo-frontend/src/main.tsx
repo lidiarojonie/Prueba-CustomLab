@@ -15,27 +15,47 @@ import ClockHistory from './components/ClockHistory.tsx';
 import AdminUsers from './components/AdminUsers.tsx';
 import LoginPage from './components/LoginPage.tsx';
 import RegisterPage from './components/RegisterPage.tsx';
+import { UserProvider, useUser } from './context/UserContext.tsx';
+
+function AppContent() {
+  const { loading } = useUser();
+
+  if (loading) {
+    return (
+      <div className="loading-screen">
+        <div className="loading-spinner"></div>
+        <p>Iniciando CustomShop...</p>
+      </div>
+    );
+  }
+
+  return (
+    <BrowserRouter>
+      <Header />
+      <Routes>
+        <Route path="/" element={<App />} />
+        <Route path="product/:id" element={<ProductDetail />} />
+        <Route path="checkout" element={<CheckoutPage />} />
+        <Route path="/login" element={<LoginPage />} />
+        <Route path="/register" element={<RegisterPage />} />
+        <Route path="/intranet" element={<IntranetLayout />}>
+          <Route index element={<IntranetHome />} />
+          <Route path="fichajes" element={<ClockInPage />} />
+          <Route path="historico" element={<ClockHistory />} />
+        </Route>
+        <Route path="/admin/users" element={<AdminUsers />} />
+        <Route path="*" element={<NotFound />} />
+      </Routes>
+    </BrowserRouter>
+  );
+}
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <CartProvider>
-      <BrowserRouter>
-        <Header />
-        <Routes>
-          <Route path="/" element={<App />} />
-          <Route path="product/:id" element={<ProductDetail />} />
-          <Route path="checkout" element={<CheckoutPage />} />
-          <Route path="/login" element={<LoginPage />} />
-          <Route path="/register" element={<RegisterPage />} />
-          <Route path="/intranet" element={<IntranetLayout />}>
-            <Route index element={<IntranetHome />} />
-            <Route path="fichajes" element={<ClockInPage />} />
-            <Route path="historico" element={<ClockHistory />} />
-          </Route>
-          <Route path="/admin/users" element={<AdminUsers />} />
-          <Route path="*" element={<NotFound />} />
-        </Routes>
-      </BrowserRouter>
-    </CartProvider>
+    <UserProvider>
+      <CartProvider>
+        <AppContent />
+      </CartProvider>
+    </UserProvider>
   </StrictMode>,
 )

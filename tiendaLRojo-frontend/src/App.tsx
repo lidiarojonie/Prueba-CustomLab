@@ -4,6 +4,7 @@ import ProductCard from './components/ProductCard';
 import CartSummary from './components/CartSummary';
 import { useNavigate } from 'react-router-dom';
 import { useCart } from './context/CartContext.tsx';
+import { useUser } from './context/UserContext.tsx';
 
 function App() {
   const navigate = useNavigate();

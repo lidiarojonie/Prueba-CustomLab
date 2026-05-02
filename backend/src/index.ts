@@ -23,15 +23,21 @@ interface AuthRequest extends Request {
     customer?: { id: number; username: string; role: string };
 }
 
+// Asegurar que la tabla orders tiene customer_id
+pool.query(`
+    ALTER TABLE orders ADD COLUMN IF NOT EXISTS customer_id INTEGER REFERENCES customers(id)
+`).catch(() => console.log("Columna customer_id en orders ya existe"));
+
 const authenticateToken = (req: AuthRequest, res: Response, next: NextFunction) => {
-    const authHeader = req.cookies.token || req.headers.authorization;
-    if (!authHeader) {
-        return res.status(401).json({ message: "Acceso no autorizado" });
+    let token = req.cookies.token;
+    
+    // Si no hay cookie, buscar en el header Authorization
+    if (!token && req.headers.authorization) {
+        token = req.headers.authorization.split(" ")[1];
     }
 
-    const token = authHeader.split(" ")[1];
     if (!token) {
-        return res.status(401).json({ message: "Token no proporcionado" });
+        return res.status(401).json({ message: "Acceso no autorizado" });
     }
 
     try {
@@ -61,6 +67,16 @@ const requireRole = (...roles: string[]) => {
 app.listen(PORT, () => {
     console.log(`Servidor escuchando en http://localhost:${PORT}`);
 });
+
+// Asegurar que la columna password existe (renombrar password_hash si es necesario)
+pool.query(`
+    DO $$ 
+    BEGIN 
+        IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='customers' AND column_name='password_hash') THEN
+            ALTER TABLE customers RENAME COLUMN password_hash TO password;
+        END IF;
+    END $$;
+`).catch(() => {});
 
 app.get("/", (req: Request, res: Response) => {
     res.send("Backend de la tienda funcionando")
@@ -104,9 +120,18 @@ app.get("/api/test", async (req: Request, res: Response) => {
     res.json({ connected: true, time: result.rows[0].now });
 });
 
-app.get("/api/orders", async (req: Request, res: Response) => {
+app.get("/api/orders", authenticateToken, requireRole("admin", "employee"), async (req: Request, res: Response) => {
     const result = await pool.query(
         "SELECT * FROM orders WHERE created_at IS NOT NULL ORDER BY id ASC");
+    res.json(result.rows);
+});
+
+app.get("/api/orders/my", authenticateToken, async (req: AuthRequest, res: Response) => {
+    const customerId = req.customer!.id;
+    const result = await pool.query(
+        "SELECT * FROM orders WHERE customer_id = $1 ORDER BY created_at DESC",
+        [customerId]
+    );
     res.json(result.rows);
 });
 
@@ -173,11 +198,9 @@ app.post("/api/products", authenticateToken, async (req: Request<{}, {}, {
     res.status(201).json({ message: "producto añadido correctamente", product: result.rows[0] });
 });
 
-app.post("/api/orders", async (req: Request<{}, {}, {
-    items: { product_id: number; quantity: number; price: number }[];
-    address: string;
-}>, res: Response) => {
+app.post("/api/orders", authenticateToken, async (req: AuthRequest, res: Response) => {
     const { items, address } = req.body;
+    const customerId = req.customer?.id;
     if (!items || !Array.isArray(items) || items.length === 0) {
         return res.status(400).json({ error: "Se requiere un array de items con product_id y quantity" });
     }
@@ -214,8 +237,8 @@ app.post("/api/orders", async (req: Request<{}, {}, {
         await pool.query("BEGIN");
 
         const orderResult = await pool.query(
-            "INSERT INTO orders (status, total, address) VALUES ('pending', $1, $2) RETURNING *",
-            [total, address]
+            "INSERT INTO orders (status, total, address, customer_id) VALUES ('pending', $1, $2, $3) RETURNING *",
+            [total, address, customerId]
         );
         const orderId = orderResult.rows[0].id;
 
@@ -276,63 +299,83 @@ app.post("/api/products/:id/reviews", async (req: Request<{ id: string }, {}, { 
 app.post("/api/auth/register", async (req: Request<{}, {}, {
     username: string, email: string, password: string, full_name?: string
 }>, res: Response) => {
+    try {
+        const { username, email, password, full_name } = req.body;
+        if (!username || !email || !password) {
+            return res.status(400).json({ error: "Username, email y password son requeridos" });
+        }
 
-    const { username, email, password, full_name } = req.body;
-    if (!username || !email || !password) {
-        return res.status(400).json({ error: "Username, email y password son requeridos" });
+        const existingUser = await pool.query(
+            "SELECT 1 FROM customers WHERE username = $1 OR email = $2",
+            [username, email]
+        );
+
+        if (existingUser.rows.length > 0) {
+            return res.status(400).json({ error: "El nombre de usuario o el correo electrónico ya están en uso" });
+        }
+
+        const hashedPassword = await bcrypt.hash(password, 10);
+
+        const result = await pool.query(
+            "INSERT INTO customers (username, email, password, full_name) VALUES ($1, $2, $3, $4) RETURNING id, username, email, full_name, role",
+            [username, email, hashedPassword, full_name ?? null]
+        );
+
+        res.status(201).json({ message: "Usuario registrado correctamente", customer: result.rows[0] });
+    } catch (err) {
+        console.error("Error en Registro:", err);
+        res.status(500).json({ error: "Error interno del servidor en el registro" });
     }
+});
 
-    const existingUser = await pool.query(
-        "SELECT 1 FROM customers WHERE username = $1 OR email = $2",
-        [username, email]
-    );
+app.get("/api/auth/me", authenticateToken, (req: AuthRequest, res: Response) => {
+    res.json({ customer: req.customer });
+});
 
-    if (existingUser.rows.length > 0) {
-        return res.status(400).json({ error: "El nombre de usuario o el correo electrónico ya están en uso" });
-    }
-
-    const hashedPassword = await bcrypt.hash(password, 10);
-
-    const result = await pool.query(
-        "INSERT INTO customers (username, email, password, full_name) VALUES ($1, $2, $3, $4) RETURNING id, username, email, full_name",
-        [username, email, hashedPassword, full_name ?? null]
-    );
-
-    res.status(201).json({ message: "Usuario registrado correctamente", user: result.rows[0] });
+app.post("/api/auth/logout", (req: Request, res: Response) => {
+    res.clearCookie("token");
+    res.json({ message: "Sesión cerrada correctamente" });
 });
 
 app.post("/api/auth/login", async (req: Request<{}, {}, { identifier?: string; email?: string; password: string }>, res: Response) => {
-    const { identifier, email, password } = req.body;
-    const loginIdentifier = identifier || email;
-    
-    if (!loginIdentifier || !password) {
-        return res.status(400).json({ error: "Email/identifier y password son requeridos" });
+    try {
+        const { identifier, email, password } = req.body;
+        const loginIdentifier = identifier || email;
+        
+        if (!loginIdentifier || !password) {
+            return res.status(400).json({ error: "Email/identifier y password son requeridos" });
+        }
+        
+        const userResult = await pool.query(
+            "SELECT id, username, email, password, role FROM customers WHERE email = $1 OR username = $2",
+            [loginIdentifier, loginIdentifier]
+        );
+        
+        if (userResult.rows.length === 0) {
+            return res.status(400).json({ error: "Credenciales inválidas" });
+        }
+
+        const user = userResult.rows[0];
+        const passwordMatch = await bcrypt.compare(password, user.password);
+        if (!passwordMatch) {
+            return res.status(400).json({ error: "Credenciales inválidas" });
+        }
+
+        const token = jwt.sign(
+            { id: user.id, username: user.username, role: user.role } as JwtPayload,
+            JWT_SECRET,
+            { expiresIn: "2h" }
+        );
+
+        res.cookie("token", token, { httpOnly: true, secure: false, sameSite: "lax", maxAge: 2 * 60 * 60 * 1000 });
+        res.json({ 
+            message: "Login exitoso", 
+            customer: { id: user.id, username: user.username, email: user.email, role: user.role } 
+        });
+    } catch (err) {
+        console.error("Error en Login:", err);
+        res.status(500).json({ error: "Error interno del servidor en el login" });
     }
-    
-    const userResult = await pool.query(
-        "SELECT id, username, email, password, role FROM customers WHERE email = $1 OR username = $2",
-        [loginIdentifier, loginIdentifier]
-    );
-    
-    if (userResult.rows.length === 0) {
-        return res.status(400).json({ error: "Credenciales inválidas" });
-    }
-
-    const user = userResult.rows[0];
-    const passwordMatch = await bcrypt.compare(password, user.password);
-    if (!passwordMatch) {
-        return res.status(400).json({ error: "Credenciales inválidas" });
-    }
-
-    const token = jwt.sign(
-        { id: user.id, username: user.username, role: user.role } as JwtPayload,
-        JWT_SECRET,
-        { expiresIn: "2h" }
-
-    );
-
-    res.cookie("token", token, { httpOnly: true, secure: false, sameSite: "lax", maxAge: 2 * 60 * 60 * 1000 }); // secure: true en producción con HTTPS
-    res.json({ message: "Login exitoso", token, user: { id: user.id, username: user.username, email: user.email, role: user.role } });
 });
 
 // AÑADIR AL DISCO DE CASA A PARTIR DE AQUI

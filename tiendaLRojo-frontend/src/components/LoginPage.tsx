@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import './auth.css';
+import { useUser } from '../context/UserContext.tsx';
 
 interface LoginFormData {
   identifier: string;
@@ -9,6 +10,7 @@ interface LoginFormData {
 
 function LoginPage() {
   const navigate = useNavigate();
+  const { setCustomer } = useUser();
   const [formData, setFormData] = useState<LoginFormData>({ identifier: '', password: '' });
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -44,18 +46,8 @@ function LoginPage() {
 
       const data = await response.json();
       
-      // Guardar usuario en sessionStorage
-      sessionStorage.setItem('user', JSON.stringify({
-        id: data.user?.id,
-        username: data.user?.username,
-        email: data.user?.email,
-        role: data.user?.role,
-      }));
-
-      // Guardar token si es necesario
-      if (data.token) {
-        sessionStorage.setItem('token', data.token);
-      }
+      // Guardar usuario en el Context
+      setCustomer(data.customer);
 
       navigate('/intranet');
     } catch (err) {
@@ -74,7 +66,7 @@ function LoginPage() {
 
         <form onSubmit={handleSubmit} className="auth-form">
           <div className="form-group">
-            <label htmlFor="identifier">Email o usuario:</label>
+            <label htmlFor="identifier">Email o nombre de usuario:</label>
             <input
               type="text"
               id="identifier"

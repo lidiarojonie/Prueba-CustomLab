@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useUser } from '../context/UserContext.tsx';
 
 interface ClockEvent {
     id: number;
@@ -7,9 +8,7 @@ interface ClockEvent {
 }
 
 function ClockInPage() {
-    // Leer el usuario guardado por LoginPage
-    const raw = sessionStorage.getItem("user");
-    const user = raw ? JSON.parse(raw) : null;
+    const { customer: user } = useUser();
 
     const [isClockedIn, setIsClockedIn] = useState(false);
     const [note, setNote] = useState('');

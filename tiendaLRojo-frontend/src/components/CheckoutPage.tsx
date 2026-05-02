@@ -55,7 +55,6 @@ function CheckoutPage() {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${sessionStorage.getItem('token')}`
         },
         credentials: 'include',
         body: JSON.stringify({

@@ -1,10 +1,9 @@
 import { NavLink, Outlet } from 'react-router-dom';
+import { useUser } from '../context/UserContext.tsx';
 import './intranet.css';
 
 function IntranetLayout() {
-    // Leer el usuario guardado por LoginPage
-    const raw = sessionStorage.getItem("user");
-    const user = raw ? JSON.parse(raw) : null;
+    const { customer: user } = useUser();
 
     return (
         <div className="intranet-layout">

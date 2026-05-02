@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useUser } from '../context/UserContext.tsx';
 import './OrderHistory.css';
 
 interface OrderItem {
@@ -49,6 +50,7 @@ function OrderHistory() {
   const [isLoading, setIsLoading] = useState(true);
   const [isLoadingDetail, setIsLoadingDetail] = useState(false);
   const [error, setError] = useState('');
+  const { customer } = useUser();
 
   // Cargar pedidos al montarse
   useEffect(() => {
@@ -57,19 +59,17 @@ function OrderHistory() {
         setIsLoading(true);
         setError('');
 
-        const userStr = sessionStorage.getItem('user');
-        if (!userStr) {
+        if (!customer) {
           setError('Usuario no autenticado');
           setIsLoading(false);
           return;
         }
 
-        const user: User = JSON.parse(userStr);
+        const endpoint = (customer.role === 'admin' || customer.role === 'employee') 
+          ? 'http://localhost:3000/api/orders'
+          : 'http://localhost:3000/api/orders/my';
 
-        const response = await fetch(`http://localhost:3000/api/orders/customer/${user.id}`, {
-          headers: {
-            'Authorization': `Bearer ${sessionStorage.getItem('token')}`
-          },
+        const response = await fetch(endpoint, {
           credentials: 'include'
         });
 
@@ -101,9 +101,6 @@ function OrderHistory() {
       setIsLoadingDetail(true);
 
       const response = await fetch(`http://localhost:3000/api/orders/${orderId}`, {
-        headers: {
-          'Authorization': `Bearer ${sessionStorage.getItem('token')}`
-        },
         credentials: 'include'
       });
 

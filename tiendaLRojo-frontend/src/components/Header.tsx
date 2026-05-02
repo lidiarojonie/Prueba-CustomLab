@@ -4,9 +4,12 @@ import CartSummary from './CartSummary';
 import { useNavigate, useLocation } from 'react-router-dom';
 import type { Customer } from '../types';
 
+import { useUser } from '../context/UserContext';
+
 function Header() {
   const navigate = useNavigate();
   const { cart, cartCount, updateQuantity, removeFromCart, clearCart } = useCart();
+  const { customer, setCustomer } = useUser();
   const [isCartOpen, setIsCartOpen] = useState(false);
   const location = useLocation();
 
@@ -20,9 +23,21 @@ function Header() {
     setIsCartOpen(!isCartOpen);
   };
 
-  // Leer usuario de sessionStorage (esto podría ir a un AuthContext en el futuro)
-  const rawUser = sessionStorage.getItem("user");
-  const user: Customer | null = rawUser ? JSON.parse(rawUser) : null;
+  const handleLogout = async () => {
+    try {
+      await fetch('http://localhost:3000/api/auth/logout', {
+        method: 'POST',
+        credentials: 'include'
+      });
+      setCustomer(null);
+      navigate('/');
+    } catch (err) {
+      console.error("Error al cerrar sesión:", err);
+      // Fallback: al menos limpiar el estado local
+      setCustomer(null);
+      navigate('/');
+    }
+  };
 
   return (
     <>
@@ -34,23 +49,19 @@ function Header() {
           </div>
           
           <div className="header-info">
-            {user && (
+            {customer && (
               <div className="user-info">
-                <span className="user-name">👤 {user.username}</span>
+                <span className="user-name">👤 {customer.username}</span>
                 <button 
                   className="logout-btn"
-                  onClick={() => {
-                    sessionStorage.removeItem("user");
-                    sessionStorage.removeItem("token");
-                    navigate('/');
-                  }}
+                  onClick={handleLogout}
                 >
                   Cerrar sesión
                 </button>
               </div>
             )}
             
-            {!user && (
+            {!customer && (
               <div className="auth-buttons">
                 <button 
                   className="login-btn"

@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useUser } from '../context/UserContext.tsx';
 
 interface ClockEvent {
     id: number;
@@ -30,8 +31,7 @@ function formatDate(iso: string): string {
 }
 
 function ClockHistory() {
-    const raw = sessionStorage.getItem("user");
-    const user = raw ? JSON.parse(raw) : null;
+    const { customer: user } = useUser();
 
     const [records, setRecords] = useState<ClockRecord[]>([]);
     const [loading, setLoading] = useState(true);
