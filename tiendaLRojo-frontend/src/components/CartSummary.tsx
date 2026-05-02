@@ -1,4 +1,4 @@
-import { useNavigate } from 'react-router-dom';
+
 import type { CartItem } from '../types';
 import './cart.css';
 
@@ -10,7 +10,7 @@ interface CartSummaryProps {
 }
 
 function CartSummary({ cart, onUpdateQuantity, onRemove, onConfirm }: CartSummaryProps) {
-  const navigate = useNavigate();
+
 
   const getPrice = (price: number | string): number => {
     return typeof price === 'string' ? parseFloat(price) : price;
@@ -20,9 +20,7 @@ function CartSummary({ cart, onUpdateQuantity, onRemove, onConfirm }: CartSummar
     return cart.reduce((total, item) => total + getPrice(item.product.price) * item.quantity, 0);
   };
 
-  const handleConfirm = () => {
-    navigate('/checkout');
-  };
+
 
   return (
     <div className="cart-summary-container">
@@ -81,7 +79,7 @@ function CartSummary({ cart, onUpdateQuantity, onRemove, onConfirm }: CartSummar
             </div>
             <button
               className="cart-checkout-button"
-              onClick={handleConfirm}
+              onClick={onConfirm}
               disabled={cart.length === 0}
             >
               Ir a pagar

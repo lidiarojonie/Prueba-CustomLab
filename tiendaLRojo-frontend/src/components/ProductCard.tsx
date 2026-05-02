@@ -25,7 +25,8 @@ function ProductCard({ product, onSelect, onEdit, onDelete, onAddToCart }: Produ
                     {onAddToCart && (
                         <button
                             className="btn-add-to-cart"
-                            title="Añadir al carrito"
+                            title={product.stock === 0 || product.active === false ? "Producto no disponible" : "Añadir al carrito"}
+                            disabled={product.stock === 0 || product.active === false}
                             onClick={(e) => {
                                 e.stopPropagation();
                                 onAddToCart(product);

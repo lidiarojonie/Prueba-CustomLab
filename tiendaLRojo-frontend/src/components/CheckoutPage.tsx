@@ -59,8 +59,8 @@ function CheckoutPage() {
         },
         credentials: 'include',
         body: JSON.stringify({
-          items: orderItems,
-          address: address.trim()
+          "items": orderItems,
+          "address": address.trim()
         })
       });
 
@@ -190,7 +190,7 @@ function CheckoutPage() {
           {/* Formulario de dirección */}
           <div className="checkout-form">
             <h3>Dirección de envío</h3>
-            
+
             {error && (
               <div className="error-message">
                 {error}

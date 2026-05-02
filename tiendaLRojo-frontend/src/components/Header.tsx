@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useCart } from '../context/CartContext';
 import CartSummary from './CartSummary';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 
 interface User {
   id: number;
@@ -14,6 +14,12 @@ function Header() {
   const navigate = useNavigate();
   const { cart, cartCount, updateQuantity, removeFromCart, clearCart } = useCart();
   const [isCartOpen, setIsCartOpen] = useState(false);
+  const location = useLocation();
+
+  // No mostrar el header global en la intranet
+  if (location.pathname.startsWith('/intranet')) {
+    return null;
+  }
 
   const toggleCart = (e: React.MouseEvent) => {
     e.stopPropagation();

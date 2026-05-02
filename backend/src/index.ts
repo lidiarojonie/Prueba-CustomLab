@@ -12,15 +12,15 @@ const app = express();
 const PORT = 3000;
 const JWT_SECRET = process.env.JWT_SECRET ?? "dinosarioRAWR";
 
-app.use(cors( { 
-    origin: "http://localhost:5173", 
-    credentials: true 
-} ));
+app.use(cors({
+    origin: "http://localhost:5173",
+    credentials: true
+}));
 app.use(express.json());
 app.use(cookieParser());
 
 interface AuthRequest extends Request {
-    customer? : { id: number; username: string; role: string };
+    customer?: { id: number; username: string; role: string };
 }
 
 const authenticateToken = (req: AuthRequest, res: Response, next: NextFunction) => {
@@ -34,7 +34,7 @@ const authenticateToken = (req: AuthRequest, res: Response, next: NextFunction) 
         return res.status(401).json({ message: "Token no proporcionado" });
     }
 
-    try{
+    try {
         const payload = jwt.verify(token, JWT_SECRET) as JwtPayload;
         req.customer = { id: payload.id, username: payload.username, role: payload.role };
         next();
@@ -78,7 +78,7 @@ app.get("/api/products/inactive", async (req: Request, res: Response) => {
 app.get("/api/products/:id", async (req: Request, res: Response) => {
     const id = Number(req.params.id);
     const result = await pool.query("SELECT * FROM products WHERE id = $1", [id]);
-    
+
     if (result.rows.length === 0) {
         return res.status(404).json({ message: "Producto no encontrado" });
     }
@@ -105,10 +105,10 @@ app.get("/api/orders/:id", async (req: Request, res: Response) => {
     const items = await pool.query(
         `SELECT p.id, p.name, p.price FROM order_items oi
         JOIN products p ON oi.product_id = p.id
-        WHERE oi.order_id = $1`, 
+        WHERE oi.order_id = $1`,
         [orderId]
     );
-    res.json({... orderResult.rows[0], items: items.rows });
+    res.json({ ...orderResult.rows[0], items: items.rows });
 });
 
 app.get("/api/products/:id/reviews", async (req: Request, res: Response) => {
@@ -189,7 +189,7 @@ app.post("/api/orders", async (req: Request<{}, {}, {
         if (productResult.rows[0].price !== item.price) {
             return res.status(400).json({ error: `El precio del producto con id ${item.product_id} ha cambiado` });
         }
-        
+
     }
 
     const total = items.reduce((sum, item) => sum + item.quantity * item.price, 0);
@@ -227,7 +227,7 @@ app.post("/api/orders", async (req: Request<{}, {}, {
     }
 });
 
-app.post("/api/products/:id/reviews", async (req: Request<{ id: string }, {}, {rating: number; comment?: string; customerId: number;}>, res: Response) => {
+app.post("/api/products/:id/reviews", async (req: Request<{ id: string }, {}, { rating: number; comment?: string; customerId: number; }>, res: Response) => {
 
     const productId = Number(req.params.id);
     const { rating, comment, customerId } = req.body;
@@ -236,14 +236,14 @@ app.post("/api/products/:id/reviews", async (req: Request<{ id: string }, {}, {r
     }
     const commentText = comment ?? "";
 
-    const productResult = await pool.query( 
+    const productResult = await pool.query(
         "SELECT id FROM products WHERE id = $1 AND deleted_at IS NULL",
         [productId]
     );
     if (productResult.rows.length === 0) {
         return res.status(404).json({ error: "Producto no encontrado" });
     }
-    
+
     const customerResult = await pool.query(
         "SELECT id FROM customers WHERE id = $1",
         [customerId]
@@ -259,8 +259,8 @@ app.post("/api/products/:id/reviews", async (req: Request<{ id: string }, {}, {r
     res.status(201).json({ message: "Reseña creada correctamente", review: result.rows[0] });
 });
 
-app.post("api/auth/register", async (req: Request<{}, {}, { 
-    username: string, email: string, password: string, full_name?: string 
+app.post("api/auth/register", async (req: Request<{}, {}, {
+    username: string, email: string, password: string, full_name?: string
 }>, res: Response) => {
 
     const { username, email, password, full_name } = req.body;
@@ -307,10 +307,10 @@ app.post("/api/auth/login", async (req: Request<{}, {}, { username: string; pass
     }
 
     const token = jwt.sign(
-        { id: user.id, username: user.username, role: user.role } as JwtPayload, 
-        JWT_SECRET, 
+        { id: user.id, username: user.username, role: user.role } as JwtPayload,
+        JWT_SECRET,
         { expiresIn: "2h" }
-    
+
     );
 
     res.cookie("token", token, { httpOnly: true, secure: false, sameSite: "lax", maxAge: 2 * 60 * 60 * 1000 }); // secure: true en producción con HTTPS
@@ -373,22 +373,24 @@ app.delete("/api/products/:id", async (req: Request<{ id: string }>, res: Respon
 
 app.delete("/api/products/:id", async (req, res) => {
     const inOrders = await pool.query(
-        "SELECT 1 FROM order_items WHERE product_id = $1 LIMIT 1", 
+        "SELECT 1 FROM order_items WHERE product_id = $1 LIMIT 1",
         [Number(req.params.id)]
     );
 
     if (inOrders.rows.length > 0) {
         const result = await pool.query(
-            "UPDATE products SET deleted_at = NOW() WHERE id = $1 AND deleted_at IS NULL RETURNING *", 
+            "UPDATE products SET deleted_at = NOW() WHERE id = $1 AND deleted_at IS NULL RETURNING *",
             [Number(req.params.id)]
         );
         if (result.rows.length === 0) {
             return res.status(404).json({ error: "Producto no encontrado o ya eliminado" });
         }
-        return res.json({ message: "Producto marcado como eliminado", 
-            product: result.rows[0] });
+        return res.json({
+            message: "Producto marcado como eliminado",
+            product: result.rows[0]
+        });
     }
-    
+
     // Si no está en ningún pedido, se puede eliminar físicamente
     // Añadir el Hard delete como opción para productos que no estén en pedidos
     const id = Number(req.params.id);
@@ -414,8 +416,8 @@ app.patch("/api/products/:id/toggle", async (req, res) => {
 
     const p = result.rows[0];
 
-    res.json({ 
-        message: p.active ? "Producto activado" : "Producto desactivado", 
-        product: p 
+    res.json({
+        message: p.active ? "Producto activado" : "Producto desactivado",
+        product: p
     });
 });

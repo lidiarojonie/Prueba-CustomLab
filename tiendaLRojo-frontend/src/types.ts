@@ -6,6 +6,7 @@ export interface Product {
     category: string;
     stock: number;      // Unidades disponibles
     image_url: string;
+    active?: boolean;   // Estado del producto (activo/inactivo)
     average_rating?: number | null; // Rating medio del producto (puede ser null si no tiene reseñas)
 }
 

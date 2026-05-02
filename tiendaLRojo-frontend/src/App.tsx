@@ -1,12 +1,13 @@
 import { useEffect, useState } from 'react';
 import type { Product } from './types.ts';
 import ProductCard from './components/ProductCard';
+import CartSummary from './components/CartSummary';
 import { useNavigate } from 'react-router-dom';
 import { useCart } from './context/CartContext.tsx';
 
 function App() {
   const navigate = useNavigate();
-  const { addToCart } = useCart();
+  const { cart, addToCart, updateQuantity, removeFromCart } = useCart();
   const [products, setProducts] = useState<Product[]>([]);
   
   useEffect(() => {
@@ -147,6 +148,13 @@ function App() {
           />
         ))}
       </div>
+
+      <CartSummary
+        cart={cart}
+        onUpdateQuantity={updateQuantity}
+        onRemove={removeFromCart}
+        onConfirm={() => navigate('/checkout')}
+      />
     </>
   )
 }

@@ -195,9 +195,15 @@ body {
   z-index: 10;
 }
 
-.btn-add-to-cart:hover {
+.btn-add-to-cart:hover:not(:disabled) {
   background-color: #5d6e92;
   transform: scale(1.1);
+}
+
+.btn-add-to-cart:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+  background-color: #a0a0a0;
 }
 
 .product-card img {
