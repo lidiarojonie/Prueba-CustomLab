@@ -68,7 +68,7 @@ function AddProductPage() {
           ← Volver al catálogo
         </button>
         
-        <h2>🆕 Añadir Nuevo Producto</h2>
+        <h2>Añadir Nuevo Producto</h2>
         <p className="admin-subtitle">Completa los datos para añadir un producto a la tienda</p>
 
         {error && <div className="error-message" style={{ marginBottom: '1rem' }}>{error}</div>}
