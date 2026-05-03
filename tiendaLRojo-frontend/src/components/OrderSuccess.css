@@ -1,0 +1,92 @@
+.order-success-page {
+  min-height: calc(100vh - 100px);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem;
+  position: relative;
+  background-color: #f9fafb;
+}
+
+.back-to-catalog-btn {
+  position: absolute;
+  top: 2rem;
+  left: 2rem;
+  background-color: white;
+  border: 1px solid #e5e7eb;
+  padding: 0.6rem 1.2rem;
+  border-radius: 8px;
+  font-size: 0.95rem;
+  font-weight: 500;
+  color: #374151;
+  cursor: pointer;
+  transition: all 0.2s;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+}
+
+.back-to-catalog-btn:hover {
+  background-color: #f3f4f6;
+  border-color: #d1d5db;
+}
+
+.success-card {
+  background-color: white;
+  padding: 3rem 2rem;
+  border-radius: 16px;
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1);
+  text-align: center;
+  max-width: 500px;
+  width: 100%;
+}
+
+.success-icon {
+  font-size: 4rem;
+  margin-bottom: 1.5rem;
+}
+
+.success-card h1 {
+  font-size: 2rem;
+  color: #111827;
+  margin-bottom: 1rem;
+}
+
+.success-card p {
+  color: #6b7280;
+  font-size: 1.1rem;
+  line-height: 1.6;
+  margin-bottom: 2rem;
+}
+
+.success-footer {
+  border-top: 1px solid #f3f4f6;
+  padding-top: 2rem;
+}
+
+.view-orders-btn {
+  background-color: #3b82f6;
+  color: white;
+  border: none;
+  padding: 0.75rem 1.5rem;
+  border-radius: 8px;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.2s;
+  width: 100%;
+}
+
+.view-orders-btn:hover {
+  background-color: #2563eb;
+}
+
+@media (max-width: 640px) {
+  .back-to-catalog-btn {
+    position: static;
+    margin-bottom: 2rem;
+  }
+  
+  .success-card {
+    padding: 2rem 1.5rem;
+  }
+}

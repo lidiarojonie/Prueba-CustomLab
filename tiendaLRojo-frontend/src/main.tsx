@@ -18,6 +18,7 @@ import RegisterPage from './components/RegisterPage.tsx';
 import OrderHistory from './components/OrderHistory.tsx';
 import OrdersPanel from './components/OrdersPanel.tsx';
 import IntranetCatalog from './components/IntranetCatalog.tsx';
+import OrderSuccess from './components/OrderSuccess.tsx';
 import { UserProvider, useUser } from './context/UserContext.tsx';
 import PrivateRoute from './components/PrivateRoute.tsx';
 
@@ -51,6 +52,12 @@ function AppContent() {
         <Route path="/mis-pedidos" element={
           <PrivateRoute>
             <OrderHistory />
+          </PrivateRoute>
+        } />
+
+        <Route path="/order-success" element={
+          <PrivateRoute>
+            <OrderSuccess />
           </PrivateRoute>
         } />
         

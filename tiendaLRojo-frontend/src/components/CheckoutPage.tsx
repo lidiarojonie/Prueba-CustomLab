@@ -25,7 +25,7 @@ function CheckoutPage() {
   const [address, setAddress] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
-  const [orderCreated, setOrderCreated] = useState<OrderResponse['order'] | null>(null);
+
 
   const getPrice = (price: number | string): number => {
     return typeof price === 'string' ? parseFloat(price) : price;
@@ -73,9 +73,8 @@ function CheckoutPage() {
       }
 
       // Pedido exitoso
-      setOrderCreated(data.order);
-      // Limpiar carrito
       clearCart();
+      navigate('/order-success');
     } catch (err) {
       setError('Error de conexión. Por favor, intenta de nuevo.');
       console.error('Error:', err);
@@ -84,40 +83,7 @@ function CheckoutPage() {
     }
   };
 
-  // Si el pedido fue creado con éxito
-  if (orderCreated) {
-    return (
-      <div className="checkout-page">
-        <div className="checkout-container">
-          <div className="order-success">
-            <h2>¡Pedido completado!</h2>
-            <div className="success-message">
-              <p>Tu pedido ha sido creado exitosamente.</p>
-              <p className="order-number">
-                <strong>Número de pedido:</strong> #{orderCreated.id}
-              </p>
-              <p className="order-total">
-                <strong>Total:</strong> €{
-                  typeof orderCreated.total === 'string'
-                    ? parseFloat(orderCreated.total).toFixed(2)
-                    : orderCreated.total.toFixed(2)
-                }
-              </p>
-              <p className="order-status">
-                <strong>Estado:</strong> {orderCreated.status}
-              </p>
-            </div>
-            <button
-              className="checkout-button"
-              onClick={() => navigate('/')}
-            >
-              ← Volver a la tienda
-            </button>
-          </div>
-        </div>
-      </div>
-    );
-  }
+
 
   // Si el carrito está vacío
   if (cart.length === 0) {

@@ -142,7 +142,8 @@ app.get("/api/orders/:id", async (req: Request, res: Response) => {
         return res.status(404).json({ message: "Pedido no encontrado" });
     }
     const items = await pool.query(
-        `SELECT p.id, p.name, p.price FROM order_items oi
+        `SELECT p.name, p.image_url, oi.quantity, oi.unit_price, (oi.quantity * oi.unit_price) as subtotal
+        FROM order_items oi
         JOIN products p ON oi.product_id = p.id
         WHERE oi.order_id = $1`,
         [orderId]
