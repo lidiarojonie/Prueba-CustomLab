@@ -5,6 +5,7 @@ interface ProductCardProps {
     onSelect?: (id: number) => void;
     onEdit?: (product: Product) => void;
     onDelete?: (id: number) => void;
+    onToggle?: (product: Product) => void;
     onAddToCart?: (product: Product) => void;
 }
 
@@ -16,10 +17,10 @@ function rating(average_rating : number | null | undefined) : string {
     return "★".repeat(filledStars) + "☆".repeat(5 - filledStars);
 }
 
-function ProductCard({ product, onSelect, onEdit, onDelete, onAddToCart }: ProductCardProps) {
+function ProductCard({ product, onSelect, onEdit, onDelete, onToggle, onAddToCart }: ProductCardProps) {
 
     return (
-        <div className="product-card-wrapper">
+        <div className={`product-card-wrapper ${product.active === false ? 'inactive-product' : ''}`}>
             <div className="product-card" onClick={() => onSelect && onSelect(product.id)}>
                 <div className="product-image-container">
                     {onAddToCart && (
@@ -35,6 +36,7 @@ function ProductCard({ product, onSelect, onEdit, onDelete, onAddToCart }: Produ
                         </button>
                     )}
                     <img src={product.image_url} alt={product.name} />
+                    {product.active === false && <div className="disabled-overlay">DESHABILITADO</div>}
                 </div>
                 <h3>{product.name}</h3>
                 <p className="price">{Number(product.price).toFixed(2)} €</p>
@@ -43,7 +45,7 @@ function ProductCard({ product, onSelect, onEdit, onDelete, onAddToCart }: Produ
                     {product.stock > 0 ? `En Stock - ${product.stock} unidades` : "Sin Stock - 0 unidades"}
                 </p>
             </div>
-            {(onEdit || onDelete) && (
+            {(onEdit || onDelete || onToggle) && (
                 <div className="product-actions">
                     {onEdit && (
                         <button 
@@ -54,6 +56,17 @@ function ProductCard({ product, onSelect, onEdit, onDelete, onAddToCart }: Produ
                                 onEdit(product);
                             }}>
                             ✏️
+                        </button>
+                    )}
+                    {onToggle && (
+                        <button 
+                            title={product.active ? "Deshabilitar" : "Habilitar"} 
+                            className={product.active ? "btn-disable" : "btn-enable"}
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                onToggle(product);
+                            }}>
+                            {product.active ? "🚫" : "✅"}
                         </button>
                     )}
                     {onDelete && (

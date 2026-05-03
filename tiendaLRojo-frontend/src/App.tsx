@@ -9,6 +9,7 @@ import { useUser } from './context/UserContext.tsx';
 function App() {
   const navigate = useNavigate();
   const { cart, addToCart, updateQuantity, removeFromCart } = useCart();
+  const { customer } = useUser();
   const [products, setProducts] = useState<Product[]>([]);
   
   useEffect(() => {
@@ -41,7 +42,8 @@ function App() {
 
     fetch(`http://localhost:3000/api/products/${product.id}`, {
       method: "PUT",
-      headers: { "Content-type": "application/json" },
+      headers: { "Content-Type": "application/json" },
+      credentials: 'include',
       body: JSON.stringify(updatedProduct)
     })
       .then((res) => {
@@ -91,7 +93,8 @@ function App() {
     }
 
     fetch(`http://localhost:3000/api/products/${id}`, {
-      method: "DELETE"
+      method: "DELETE",
+      credentials: 'include'
     })
       .then((res) => {
         if (!res.ok) throw new Error("Error del servidor: " + res.status);
@@ -103,38 +106,40 @@ function App() {
 
   return (
     <>
-      <div className='formulario-producto'>
-        <h3>Añadir producto</h3>
-        <form onSubmit={handleSubmit} className="form-horizontal">
-          <div className="form-group">
-            <label htmlFor="name">Nombre:</label>
-            <input type="text" id="name" name="name" required />
-          </div>
-          <div className="form-group">
-            <label htmlFor="description">Descripción:</label>
-            <input type="text" id="description" name="description" />
-          </div>
-          <div className="form-group">
-            <label htmlFor="price">Precio:</label>
-            <input type="number" step="0.01" id="price" name="price" required />
-          </div>
-          <div className="form-group">
-            <label htmlFor="category">Categoría:</label>
-            <input type="text" id="category" name="category" />
-          </div>
-          <div className="form-group">
-            <label htmlFor="stock">Stock:</label>
-            <input type="number" id="stock" name="stock" />
-          </div>
-          <div className="form-group">
-            <label htmlFor="imageUrl">Imagen:</label>
-            <input type="text" id="imageUrl" name="imageUrl" />
-          </div>
-          <div className="form-group form-actions">
-            <button type="submit">Añadir</button>
-          </div>
-        </form>
-      </div>
+      {customer?.role === 'admin' && (
+        <div className='formulario-producto'>
+          <h3>Añadir producto</h3>
+          <form onSubmit={handleSubmit} className="form-horizontal">
+            <div className="form-group">
+              <label htmlFor="name">Nombre:</label>
+              <input type="text" id="name" name="name" required />
+            </div>
+            <div className="form-group">
+              <label htmlFor="description">Descripción:</label>
+              <input type="text" id="description" name="description" />
+            </div>
+            <div className="form-group">
+              <label htmlFor="price">Precio:</label>
+              <input type="number" step="0.01" id="price" name="price" required />
+            </div>
+            <div className="form-group">
+              <label htmlFor="category">Categoría:</label>
+              <input type="text" id="category" name="category" />
+            </div>
+            <div className="form-group">
+              <label htmlFor="stock">Stock:</label>
+              <input type="number" id="stock" name="stock" />
+            </div>
+            <div className="form-group">
+              <label htmlFor="imageUrl">Imagen:</label>
+              <input type="text" id="imageUrl" name="imageUrl" />
+            </div>
+            <div className="form-group form-actions">
+              <button type="submit">Añadir</button>
+            </div>
+          </form>
+        </div>
+      )}
 
       {/* Actualizar a partir de aqui */}
       <div className='products-grid'>
@@ -143,19 +148,12 @@ function App() {
             key={product.id}
             product={product} 
             onSelect={(id) => navigate(`product/${id}`)}
-            onEdit={handleUpdateStock}
-            onDelete={handleDelete}
+            onEdit={(customer?.role === 'admin' || customer?.role === 'employee') ? handleUpdateStock : undefined}
+            onDelete={customer?.role === 'admin' ? handleDelete : undefined}
             onAddToCart={addToCart}
           />
         ))}
       </div>
-
-      <CartSummary
-        cart={cart}
-        onUpdateQuantity={updateQuantity}
-        onRemove={removeFromCart}
-        onConfirm={() => navigate('/checkout')}
-      />
     </>
   )
 }

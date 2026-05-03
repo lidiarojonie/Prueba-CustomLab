@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import './auth.css';
+import { useUser } from '../context/UserContext.tsx';
 
 interface RegisterFormData {
   username: string;
@@ -11,6 +12,7 @@ interface RegisterFormData {
 
 function RegisterPage() {
   const navigate = useNavigate();
+  const { setCustomer } = useUser();
   const [formData, setFormData] = useState<RegisterFormData>({
     username: '',
     email: '',
@@ -58,6 +60,7 @@ function RegisterPage() {
           email: formData.email,
           password: formData.password,
         }),
+        credentials: 'include',
       });
 
       if (!response.ok) {
@@ -65,9 +68,16 @@ function RegisterPage() {
         throw new Error(errorData.error || 'Error al registrarse');
       }
 
-      // Mostrar mensaje de éxito y redirigir al login
-      sessionStorage.setItem('registrationSuccess', 'true');
-      navigate('/login');
+      // Guardar usuario en el Context e iniciar sesión automáticamente
+      const data = await response.json();
+      setCustomer(data.customer);
+
+      // Redirigir según el dominio del correo
+      if (data.customer.email.toLowerCase().endsWith('@empleado.com')) {
+        navigate('/intranet');
+      } else {
+        navigate('/');
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Error al registrarse');
     } finally {

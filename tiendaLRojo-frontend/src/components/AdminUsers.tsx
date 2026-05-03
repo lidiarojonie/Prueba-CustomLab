@@ -15,7 +15,9 @@ function AdminUsers() {
     const [loading, setLoading] = useState(true);
 
     const loadUsers = () => {
-        fetch('http://localhost:3000/api/admin/users')
+        fetch('http://localhost:3000/api/admin/users', {
+            credentials: 'include'
+        })
             .then(res => res.json())
             .then((data: User[]) => {
                 setUsers(data);
@@ -36,6 +38,7 @@ function AdminUsers() {
             const res = await fetch(`http://localhost:3000/api/admin/users/${userId}/role`, {
                 method: 'PATCH',
                 headers: { 'Content-Type': 'application/json' },
+                credentials: 'include',
                 body: JSON.stringify({ role: newRole })
             });
             if (res.ok) {
@@ -55,6 +58,7 @@ function AdminUsers() {
             const res = await fetch(`http://localhost:3000/api/admin/users/${userId}/status`, {
                 method: 'PATCH',
                 headers: { 'Content-Type': 'application/json' },
+                credentials: 'include',
                 body: JSON.stringify({ active: !currentActive })
             });
             if (res.ok) {

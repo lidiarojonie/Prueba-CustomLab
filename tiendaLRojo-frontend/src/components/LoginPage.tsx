@@ -49,7 +49,12 @@ function LoginPage() {
       // Guardar usuario en el Context
       setCustomer(data.customer);
 
-      navigate('/intranet');
+      // Redirigir según el dominio del correo
+      if (data.customer.email.toLowerCase().endsWith('@empleado.com')) {
+        navigate('/intranet');
+      } else {
+        navigate('/');
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Error al iniciar sesión');
     } finally {

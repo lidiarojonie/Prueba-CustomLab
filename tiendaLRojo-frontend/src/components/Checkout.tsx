@@ -30,6 +30,7 @@ function Checkout() {
             headers: {
                 "Content-Type": "application/json"
             },
+            credentials: 'include',
             body: JSON.stringify({ cart, total })
         })
         .then(res => {

@@ -52,6 +52,43 @@ function Header() {
             {customer && (
               <div className="user-info">
                 <span className="user-name">👤 {customer.username}</span>
+
+                {customer.role === 'customer' && (
+                  <button 
+                    className="nav-link-btn"
+                    onClick={() => navigate('/mis-pedidos')}
+                  >
+                    Mis pedidos
+                  </button>
+                )}
+
+                {(customer.role === 'admin' || customer.role === 'employee') && (
+                  <button 
+                    className="nav-link-btn"
+                    onClick={() => navigate('/admin/orders')}
+                  >
+                    Pedidos
+                  </button>
+                )}
+
+                {customer.role === 'admin' && (
+                  <button 
+                    className="nav-link-btn"
+                    onClick={() => navigate('/admin/users')}
+                  >
+                    Usuarios
+                  </button>
+                )}
+
+                {customer.role === 'employee' && (
+                  <button 
+                    className="nav-link-btn"
+                    onClick={() => navigate('/intranet')}
+                  >
+                    Panel de empleados
+                  </button>
+                )}
+
                 <button 
                   className="logout-btn"
                   onClick={handleLogout}
@@ -99,7 +136,11 @@ function Header() {
                     onRemove={removeFromCart}
                     onConfirm={() => {
                       setIsCartOpen(false);
-                      navigate('/checkout');
+                      if (customer) {
+                        navigate('/checkout');
+                      } else {
+                        navigate('/login');
+                      }
                     }}
                   />
                 </div>

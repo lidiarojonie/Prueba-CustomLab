@@ -30,7 +30,7 @@ pool.query(`
 
 const authenticateToken = (req: AuthRequest, res: Response, next: NextFunction) => {
     let token = req.cookies.token;
-    
+
     // Si no hay cookie, buscar en el header Authorization
     if (!token && req.headers.authorization) {
         token = req.headers.authorization.split(" ")[1];
@@ -55,11 +55,11 @@ const requireRole = (...roles: string[]) => {
         if (!req.customer) {
             return res.status(401).json({ message: "Acceso no autorizado" });
         }
-        
+
         if (!roles.includes(req.customer.role)) {
             return res.status(403).json({ message: "Acceso denegado: permisos insuficientes" });
         }
-        
+
         next();
     };
 };
@@ -76,7 +76,7 @@ pool.query(`
             ALTER TABLE customers RENAME COLUMN password_hash TO password;
         END IF;
     END $$;
-`).catch(() => {});
+`).catch(() => { });
 
 app.get("/", (req: Request, res: Response) => {
     res.send("Backend de la tienda funcionando")
@@ -150,6 +150,32 @@ app.get("/api/orders/:id", async (req: Request, res: Response) => {
     res.json({ ...orderResult.rows[0], items: items.rows });
 });
 
+app.patch("/api/orders/:id/status", authenticateToken, requireRole("admin", "employee"), async (req: Request, res: Response) => {
+    const id = Number(req.params.id);
+    const { status } = req.body;
+    const validStatuses = ['pending', 'processing', 'shipped', 'delivered', 'cancelled'];
+
+    if (!validStatuses.includes(status)) {
+        return res.status(400).json({ error: "Estado no válido. Valores permitidos: pending, processing, shipped, delivered, cancelled" });
+    }
+
+    try {
+        const result = await pool.query(
+            "UPDATE orders SET status = $1 WHERE id = $2 RETURNING *",
+            [status, id]
+        );
+
+        if (result.rows.length === 0) {
+            return res.status(404).json({ error: "Pedido no encontrado" });
+        }
+
+        res.json({ message: "Estado del pedido actualizado", order: result.rows[0] });
+    } catch (error) {
+        console.error("Error al actualizar estado del pedido:", error);
+        res.status(500).json({ error: "Error interno del servidor" });
+    }
+});
+
 app.get("/api/products/:id/reviews", async (req: Request, res: Response) => {
     const productId = Number(req.params.id);
     const result = await pool.query(
@@ -165,17 +191,11 @@ app.get("/api/products/:id/reviews", async (req: Request, res: Response) => {
 
 // Usar este endpoint de ejemplo para mejorar el resto de endpoints que requieren autenticación, extrayendo el usuario del token y usándolo para personalizar la respuesta o controlar el acceso.
 // Añadir producto a la web
-app.post("/api/products", authenticateToken, async (req: Request<{}, {}, {
+app.post("/api/products", authenticateToken, requireRole("admin"), async (req: Request<{}, {}, {
     name: string; description?: string; price: number;
     category?: string; stock?: number; image_url?: string;
 }>, res: Response) => {
     const { name, description, price, category, stock, image_url } = req.body;
-
-    // Comprobar que el usuario autenticado tiene rol de admin o employee
-    const user = (req as AuthRequest).customer!;
-    if (user.role !== "admin" && user.role !== "employee") {
-        return res.status(403).json({ error: "Acceso denegado" });
-    }
 
     if (!name) return res.status(400).json({ error: "Nombre es requerido" });
     if (price === undefined || price <= 0) {
@@ -223,7 +243,7 @@ app.post("/api/orders", authenticateToken, async (req: AuthRequest, res: Respons
         if (productResult.rows[0].stock < item.quantity) {
             return res.status(400).json({ error: `Stock insuficiente para producto id ${item.product_id}` });
         }
-        if (productResult.rows[0].price !== item.price) {
+        if (Number(productResult.rows[0].price) !== Number(item.price)) {
             return res.status(400).json({ error: `El precio del producto con id ${item.product_id} ha cambiado` });
         }
 
@@ -234,9 +254,9 @@ app.post("/api/orders", authenticateToken, async (req: AuthRequest, res: Respons
     const client = await pool.connect();
 
     try {
-        await pool.query("BEGIN");
+        await client.query("BEGIN");
 
-        const orderResult = await pool.query(
+        const orderResult = await client.query(
             "INSERT INTO orders (status, total, address, customer_id) VALUES ('pending', $1, $2, $3) RETURNING *",
             [total, address, customerId]
         );
@@ -248,7 +268,7 @@ app.post("/api/orders", authenticateToken, async (req: AuthRequest, res: Respons
                 [orderId, item.product_id, item.quantity, item.price]
             );
             await client.query(
-                "UPDATE products SET stock = stock - $1 WHERE id = $2",
+                "UPDATE products SET stock = stock - $1, active = CASE WHEN (stock - $1) <= 0 THEN false ELSE active END WHERE id = $2",
                 [item.quantity, item.product_id]
             );
         }
@@ -314,14 +334,28 @@ app.post("/api/auth/register", async (req: Request<{}, {}, {
             return res.status(400).json({ error: "El nombre de usuario o el correo electrónico ya están en uso" });
         }
 
+        let role = 'customer';
+        if (email.toLowerCase().endsWith('@empleado.com')) {
+            role = 'employee';
+        }
+
         const hashedPassword = await bcrypt.hash(password, 10);
 
         const result = await pool.query(
-            "INSERT INTO customers (username, email, password, full_name) VALUES ($1, $2, $3, $4) RETURNING id, username, email, full_name, role",
-            [username, email, hashedPassword, full_name ?? null]
+            "INSERT INTO customers (username, email, password, full_name, role) VALUES ($1, $2, $3, $4, $5) RETURNING id, username, email, full_name, role",
+            [username, email, hashedPassword, full_name ?? null, role]
         );
 
-        res.status(201).json({ message: "Usuario registrado correctamente", customer: result.rows[0] });
+        const user = result.rows[0];
+
+        const token = jwt.sign(
+            { id: user.id, username: user.username, role: user.role } as JwtPayload,
+            JWT_SECRET,
+            { expiresIn: "2h" }
+        );
+
+        res.cookie("token", token, { httpOnly: true, secure: false, sameSite: "lax", maxAge: 2 * 60 * 60 * 1000 });
+        res.status(201).json({ message: "Usuario registrado e identificado correctamente", customer: user });
     } catch (err) {
         console.error("Error en Registro:", err);
         res.status(500).json({ error: "Error interno del servidor en el registro" });
@@ -341,16 +375,16 @@ app.post("/api/auth/login", async (req: Request<{}, {}, { identifier?: string; e
     try {
         const { identifier, email, password } = req.body;
         const loginIdentifier = identifier || email;
-        
+
         if (!loginIdentifier || !password) {
             return res.status(400).json({ error: "Email/identifier y password son requeridos" });
         }
-        
+
         const userResult = await pool.query(
             "SELECT id, username, email, password, role FROM customers WHERE email = $1 OR username = $2",
             [loginIdentifier, loginIdentifier]
         );
-        
+
         if (userResult.rows.length === 0) {
             return res.status(400).json({ error: "Credenciales inválidas" });
         }
@@ -368,9 +402,9 @@ app.post("/api/auth/login", async (req: Request<{}, {}, { identifier?: string; e
         );
 
         res.cookie("token", token, { httpOnly: true, secure: false, sameSite: "lax", maxAge: 2 * 60 * 60 * 1000 });
-        res.json({ 
-            message: "Login exitoso", 
-            customer: { id: user.id, username: user.username, email: user.email, role: user.role } 
+        res.json({
+            message: "Login exitoso",
+            customer: { id: user.id, username: user.username, email: user.email, role: user.role }
         });
     } catch (err) {
         console.error("Error en Login:", err);
@@ -380,36 +414,45 @@ app.post("/api/auth/login", async (req: Request<{}, {}, { identifier?: string; e
 
 // AÑADIR AL DISCO DE CASA A PARTIR DE AQUI
 // Modifica, en este caso, todo el producto seleccionado
-app.put("/api/products/:id", async (req: Request<{ id: string }, {}, {
+app.put("/api/products/:id", authenticateToken, requireRole("admin", "employee"), async (req: Request<{ id: string }, {}, {
     name: string; description?: string; price: number;
     category?: string; stock?: number; image_url?: string;
 }>, res: Response) => {
     const id = Number(req.params.id);
     const { name, description, price, category, stock, image_url } = req.body;
 
+    const numPrice = Number(price);
+    const numStock = Number(stock);
+
     if (!name) return res.status(400).json({ error: "Nombre es requerido" });
-    if (price === undefined || price <= 0) {
-        return res.status(400).json({ error: "El precio debe ser mayor que 0" });
+    if (price === undefined || isNaN(numPrice) || numPrice <= 0) {
+        return res.status(400).json({ error: "El precio debe ser un número mayor que 0" });
     }
-    if (stock !== undefined && stock < 0) {
+    if (stock !== undefined && (isNaN(numStock) || numStock < 0)) {
         return res.status(400).json({ error: "El stock no puede ser negativo" });
     }
 
     const finalDescription = description ?? "";
     const finalCategory = category ?? "General";
-    const finalStock = stock ?? 0;
+    const finalStock = numStock || 0;
     const finalImageUrl = image_url ?? `https://placehold.co/200x200?text=${encodeURIComponent(name)}`;
+    const isActive = finalStock > 0;
 
-    const result = await pool.query(
-        "UPDATE products SET name = $1, description = $2, price = $3, category = $4, stock = $5, image_url = $6 WHERE id = $7 RETURNING *",
-        [name, finalDescription, price, finalCategory, finalStock, finalImageUrl, id]
-    );
+    try {
+        const result = await pool.query(
+            "UPDATE products SET name = $1, description = $2, price = $3, category = $4, stock = $5, image_url = $6, active = $7 WHERE id = $8 RETURNING *",
+            [name, finalDescription, numPrice, finalCategory, finalStock, finalImageUrl, isActive, id]
+        );
 
-    if (result.rows.length === 0) {
-        return res.status(404).json({ error: "Producto no encontrado" });
+        if (result.rows.length === 0) {
+            return res.status(404).json({ error: "Producto no encontrado" });
+        }
+
+        res.json({ message: "Producto actualizado correctamente", product: result.rows[0] });
+    } catch (error) {
+        console.error("Error en UPDATE /api/products/:id:", error);
+        res.status(500).json({ error: "Error al actualizar el producto en la base de datos" });
     }
-
-    res.json({ message: "Producto actualizado correctamente", product: result.rows[0] });
 });
 
 // Hard delete, elimina completamente el producto de la base de datos. 
@@ -432,7 +475,7 @@ app.delete("/api/products/:id", async (req: Request<{ id: string }>, res: Respon
 // Soft delete, marca el producto como eliminado sin eliminarlo físicamente de la base de datos. 
 // Esto permite mantener un historial y evitar problemas de integridad referencial.
 
-app.delete("/api/products/:id", async (req, res) => {
+app.delete("/api/products/:id", authenticateToken, requireRole("admin"), async (req, res) => {
     const inOrders = await pool.query(
         "SELECT 1 FROM order_items WHERE product_id = $1 LIMIT 1",
         [Number(req.params.id)]
@@ -465,7 +508,7 @@ app.delete("/api/products/:id", async (req, res) => {
     res.json({ message: "Producto eliminado", product: result.rows[0] });
 });
 
-app.patch("/api/products/:id/toggle", async (req, res) => {
+app.patch("/api/products/:id/toggle", authenticateToken, requireRole("admin", "employee"), async (req, res) => {
     const result = await pool.query(
         "UPDATE products SET active = NOT active WHERE id = $1 AND deleted_at IS NULL RETURNING *",
         [Number(req.params.id)]
@@ -497,7 +540,7 @@ pool.query(`
         recorded_at TIMESTAMPTZ DEFAULT NOW()
     )
 `).then(() => console.log("Tabla clock_events verificada"))
-  .catch(() => console.log("Tabla clock_events ya existe"));
+    .catch(() => console.log("Tabla clock_events ya existe"));
 
 // ¿Tiene fichaje de entrada sin salida?
 app.get("/api/clock/status", authenticateToken, requireRole("admin", "employee"), async (req: AuthRequest, res: Response) => {
@@ -568,7 +611,7 @@ pool.query(`
 `).catch(() => console.log("Columna active en customers ya existe"));
 
 // Listar todos los usuarios
-app.get("/api/admin/users", async (req: Request, res: Response) => {
+app.get("/api/admin/users", authenticateToken, requireRole("admin"), async (req: Request, res: Response) => {
     const result = await pool.query(
         "SELECT id, username, email, full_name, role, active FROM customers ORDER BY id ASC"
     );
@@ -576,7 +619,7 @@ app.get("/api/admin/users", async (req: Request, res: Response) => {
 });
 
 // Cambiar rol de un usuario
-app.patch("/api/admin/users/:id/role", async (req: Request<{ id: string }, {}, { role: string }>, res: Response) => {
+app.patch("/api/admin/users/:id/role", authenticateToken, requireRole("admin"), async (req: Request<{ id: string }, {}, { role: string }>, res: Response) => {
     const id = Number(req.params.id);
     const { role } = req.body;
 
@@ -598,7 +641,7 @@ app.patch("/api/admin/users/:id/role", async (req: Request<{ id: string }, {}, {
 });
 
 // Suspender / reactivar usuario
-app.patch("/api/admin/users/:id/status", async (req: Request<{ id: string }, {}, { active: boolean }>, res: Response) => {
+app.patch("/api/admin/users/:id/status", authenticateToken, requireRole("admin"), async (req: Request<{ id: string }, {}, { active: boolean }>, res: Response) => {
     const id = Number(req.params.id);
     const { active } = req.body;
 
