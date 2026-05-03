@@ -6,7 +6,7 @@ function OrderSuccess() {
 
   return (
     <div className="order-success-page">
-      <button 
+      <button
         className="back-to-catalog-btn"
         onClick={() => navigate('/')}
       >
@@ -14,7 +14,7 @@ function OrderSuccess() {
       </button>
 
       <div className="success-card">
-        <div className="success-icon">✨</div>
+        <div className="success-icon"></div>
         <h1>¡Gracias por tu pedido!</h1>
         <p>Estamos procesando tu compra y te enviaremos una actualización muy pronto.</p>
         <div className="success-footer">

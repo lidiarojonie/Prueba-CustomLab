@@ -19,6 +19,7 @@ import OrderHistory from './components/OrderHistory.tsx';
 import OrdersPanel from './components/OrdersPanel.tsx';
 import IntranetCatalog from './components/IntranetCatalog.tsx';
 import OrderSuccess from './components/OrderSuccess.tsx';
+import AddProductPage from './components/AddProductPage.tsx';
 import { UserProvider, useUser } from './context/UserContext.tsx';
 import PrivateRoute from './components/PrivateRoute.tsx';
 
@@ -70,6 +71,7 @@ function AppContent() {
           <Route path="fichajes" element={<ClockInPage />} />
           <Route path="pedidos" element={<OrdersPanel />} />
           <Route path="catalogo" element={<IntranetCatalog />} />
+          <Route path="catalogo/nuevo" element={<AddProductPage />} />
           <Route path="historico" element={<ClockHistory />} />
         </Route>
         

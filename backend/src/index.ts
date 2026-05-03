@@ -192,7 +192,7 @@ app.get("/api/products/:id/reviews", async (req: Request, res: Response) => {
 
 // Usar este endpoint de ejemplo para mejorar el resto de endpoints que requieren autenticación, extrayendo el usuario del token y usándolo para personalizar la respuesta o controlar el acceso.
 // Añadir producto a la web
-app.post("/api/products", authenticateToken, requireRole("admin"), async (req: Request<{}, {}, {
+app.post("/api/products", authenticateToken, requireRole("admin", "employee"), async (req: Request<{}, {}, {
     name: string; description?: string; price: number;
     category?: string; stock?: number; image_url?: string;
 }>, res: Response) => {
@@ -209,14 +209,19 @@ app.post("/api/products", authenticateToken, requireRole("admin"), async (req: R
     const finalDescription = description ?? "";
     const finalCategory = category ?? "General";
     const finalStock = stock ?? 0;
-    const finalImageUrl = image_url ?? `https://placehold.co/200x200?text=${encodeURIComponent(name)}`;
+    const finalImageUrl = (image_url && image_url.trim() !== "") ? image_url : `https://placehold.co/200x200?text=${encodeURIComponent(name)}`;
 
-    const result = await pool.query(
-        "INSERT INTO products (name, description, price, category, stock, image_url) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *",
-        [name, finalDescription, price, finalCategory, finalStock, finalImageUrl]
-    );
+    try {
+        const result = await pool.query(
+            "INSERT INTO products (name, description, price, category, stock, image_url) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *",
+            [name, finalDescription, price, finalCategory, finalStock, finalImageUrl]
+        );
 
-    res.status(201).json({ message: "producto añadido correctamente", product: result.rows[0] });
+        res.status(201).json({ message: "producto añadido correctamente", product: result.rows[0] });
+    } catch (error) {
+        console.error("Error al añadir producto:", error);
+        res.status(500).json({ error: "Error interno al guardar el producto" });
+    }
 });
 
 app.post("/api/orders", authenticateToken, async (req: AuthRequest, res: Response) => {
@@ -436,7 +441,7 @@ app.put("/api/products/:id", authenticateToken, requireRole("admin", "employee")
     const finalDescription = description ?? "";
     const finalCategory = category ?? "General";
     const finalStock = numStock || 0;
-    const finalImageUrl = image_url ?? `https://placehold.co/200x200?text=${encodeURIComponent(name)}`;
+    const finalImageUrl = (image_url && image_url.trim() !== "") ? image_url : `https://placehold.co/200x200?text=${encodeURIComponent(name)}`;
     const isActive = finalStock > 0;
 
     try {
@@ -476,7 +481,7 @@ app.delete("/api/products/:id", async (req: Request<{ id: string }>, res: Respon
 // Soft delete, marca el producto como eliminado sin eliminarlo físicamente de la base de datos. 
 // Esto permite mantener un historial y evitar problemas de integridad referencial.
 
-app.delete("/api/products/:id", authenticateToken, requireRole("admin"), async (req, res) => {
+app.delete("/api/products/:id", authenticateToken, requireRole("admin", "employee"), async (req, res) => {
     const inOrders = await pool.query(
         "SELECT 1 FROM order_items WHERE product_id = $1 LIMIT 1",
         [Number(req.params.id)]
@@ -602,14 +607,22 @@ app.get("/api/clock/history", authenticateToken, requireRole("admin", "employee"
 // Admin: Gestión de usuarios
 // ===========================
 
-// Asegurar que las columnas role y active existen en customers
+// Asegurar que las columnas necesarias existen
 pool.query(`
     ALTER TABLE customers ADD COLUMN IF NOT EXISTS role VARCHAR(20) DEFAULT 'customer'
-`).catch(() => console.log("Columna role en customers ya existe"));
+`).catch(() => { });
 
 pool.query(`
     ALTER TABLE customers ADD COLUMN IF NOT EXISTS active BOOLEAN DEFAULT true
-`).catch(() => console.log("Columna active en customers ya existe"));
+`).catch(() => { });
+
+pool.query(`
+    ALTER TABLE products ADD COLUMN IF NOT EXISTS active BOOLEAN DEFAULT true
+`).catch(() => { });
+
+pool.query(`
+    ALTER TABLE products ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMPTZ
+`).catch(() => { });
 
 // Listar todos los usuarios
 app.get("/api/admin/users", authenticateToken, requireRole("admin"), async (req: Request, res: Response) => {
